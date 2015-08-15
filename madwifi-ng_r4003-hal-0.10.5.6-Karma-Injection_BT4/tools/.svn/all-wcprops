@@ -1,0 +1,71 @@
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/!svn/ver/3875/madwifi/branches/madwifi-hal-0.10.5.6/tools
+END
+wpakey.c
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/tools/wpakey.c
+END
+athctrl.c
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/tools/athctrl.c
+END
+80211debug.c
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/!svn/ver/3722/madwifi/branches/madwifi-hal-0.10.5.6/tools/80211debug.c
+END
+athdebug.c
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/3722/madwifi/branches/madwifi-hal-0.10.5.6/tools/athdebug.c
+END
+athkey.c
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/tools/athkey.c
+END
+wlanconfig.c
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/!svn/ver/3722/madwifi/branches/madwifi-hal-0.10.5.6/tools/wlanconfig.c
+END
+athchans.c
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/tools/athchans.c
+END
+80211stats.c
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/!svn/ver/3722/madwifi/branches/madwifi-hal-0.10.5.6/tools/80211stats.c
+END
+athstats.c
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/3722/madwifi/branches/madwifi-hal-0.10.5.6/tools/athstats.c
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/tools/Makefile
+END
+wireless_copy.h
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/!svn/ver/3722/madwifi/branches/madwifi-hal-0.10.5.6/tools/wireless_copy.h
+END

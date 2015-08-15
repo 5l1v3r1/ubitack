@@ -1,0 +1,461 @@
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public
+END
+xscale-be-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/xscale-be-elf.inc
+END
+ap61.inc
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap61.inc
+END
+powerpc-le-eabi.inc
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/powerpc-le-eabi.inc
+END
+i386-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/i386-elf.hal.o.uu
+END
+armv4-be-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/armv4-be-elf.inc
+END
+mips1-be-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips1-be-elf.inc
+END
+ap30.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap30.hal.o.uu
+END
+sparc-be-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/sparc-be-elf.opt_ah.h
+END
+powerpc-be-eabi.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/powerpc-be-eabi.opt_ah.h
+END
+sparc64-be-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/sparc64-be-elf.hal.o.uu
+END
+ap51.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap51.opt_ah.h
+END
+ap43.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap43.opt_ah.h
+END
+sparc-be-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/sparc-be-elf.inc
+END
+x86_64-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/x86_64-elf.inc
+END
+mipsisa32-be-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mipsisa32-be-elf.inc
+END
+ap30.inc
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap30.inc
+END
+mips1-be-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips1-be-elf.opt_ah.h
+END
+armv4-be-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/armv4-be-elf.opt_ah.h
+END
+mips-le-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips-le-elf.inc
+END
+arm9-le-thumb-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 90
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/arm9-le-thumb-elf.opt_ah.h
+END
+sparc-be-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/sparc-be-elf.hal.o.uu
+END
+powerpc-be-eabi.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/powerpc-be-eabi.hal.o.uu
+END
+mips1-le-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips1-le-elf.opt_ah.h
+END
+armv4-le-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/armv4-le-elf.opt_ah.h
+END
+wackelf.c
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/wackelf.c
+END
+ap51.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap51.hal.o.uu
+END
+ap43.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap43.hal.o.uu
+END
+alpha-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/alpha-elf.inc
+END
+powerpc-be-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/powerpc-be-elf.opt_ah.h
+END
+mips1-be-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips1-be-elf.hal.o.uu
+END
+armv4-be-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/armv4-be-elf.hal.o.uu
+END
+ap43.inc
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap43.inc
+END
+arm9-le-thumb-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 90
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/arm9-le-thumb-elf.hal.o.uu
+END
+sparc64-be-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/sparc64-be-elf.inc
+END
+wisoc.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/wisoc.opt_ah.h
+END
+armv4-le-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/armv4-le-elf.hal.o.uu
+END
+mips1-le-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips1-le-elf.hal.o.uu
+END
+alpha-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/alpha-elf.opt_ah.h
+END
+xscale-le-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/xscale-le-elf.inc
+END
+wisoc.inc
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/wisoc.inc
+END
+mips-be-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips-be-elf.opt_ah.h
+END
+arm9-le-thumb-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/arm9-le-thumb-elf.inc
+END
+powerpc-be-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/powerpc-be-elf.hal.o.uu
+END
+sh4-le-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/sh4-le-elf.opt_ah.h
+END
+x86_64-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/x86_64-elf.opt_ah.h
+END
+mipsisa32-be-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mipsisa32-be-elf.opt_ah.h
+END
+armv4-le-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/armv4-le-elf.inc
+END
+mips1-le-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips1-le-elf.inc
+END
+i386-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/i386-elf.inc
+END
+xscale-be-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/xscale-be-elf.opt_ah.h
+END
+ap61.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap61.opt_ah.h
+END
+mips-be-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips-be-elf.inc
+END
+sh4-le-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/sh4-le-elf.inc
+END
+mips-le-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips-le-elf.opt_ah.h
+END
+powerpc-le-eabi.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/powerpc-le-eabi.opt_ah.h
+END
+mipsisa32-le-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mipsisa32-le-elf.opt_ah.h
+END
+wisoc.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/wisoc.hal.o.uu
+END
+ap51.inc
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap51.inc
+END
+powerpc-be-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/powerpc-be-elf.inc
+END
+xscale-le-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/xscale-le-elf.opt_ah.h
+END
+alpha-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/alpha-elf.hal.o.uu
+END
+mipsisa32-le-elf.inc
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mipsisa32-le-elf.inc
+END
+mips-be-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips-be-elf.hal.o.uu
+END
+sh4-le-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/sh4-le-elf.hal.o.uu
+END
+mipsisa32-be-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mipsisa32-be-elf.hal.o.uu
+END
+x86_64-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/x86_64-elf.hal.o.uu
+END
+i386-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/i386-elf.opt_ah.h
+END
+ap61.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap61.hal.o.uu
+END
+xscale-be-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/xscale-be-elf.hal.o.uu
+END
+ap30.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/ap30.opt_ah.h
+END
+mips-le-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mips-le-elf.hal.o.uu
+END
+powerpc-le-eabi.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/powerpc-le-eabi.hal.o.uu
+END
+mipsisa32-le-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/mipsisa32-le-elf.hal.o.uu
+END
+sparc64-be-elf.opt_ah.h
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/sparc64-be-elf.opt_ah.h
+END
+powerpc-be-eabi.inc
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/powerpc-be-eabi.inc
+END
+xscale-le-elf.hal.o.uu
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/!svn/ver/3698/madwifi/branches/madwifi-hal-0.10.5.6/hal/public/xscale-le-elf.hal.o.uu
+END

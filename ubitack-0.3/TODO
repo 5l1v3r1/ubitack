@@ -1,0 +1,15 @@
+- add input sanity checks!!!
+
+- minimal output switch for small terminals
+- antenna choice / diversity on, off for athXk drivers
+- add router functionality for AP connections
+- web proxy support for MitM evil AP
+- include social engineering toolkit
+- include airchat
+- check DHCP request log
+- include tortunnel
+- include ippon-mitm or evilgrade
+- add auto AP functionality
+
+- write how to / FAQs
+

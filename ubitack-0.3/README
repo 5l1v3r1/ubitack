@@ -1,0 +1,32 @@
+The intention to write this tool was to automates some of the tasks I need on (wireless) penetration tests.
+It aims to be a multi purpose tool for: 
+    * Connect to different access points with different credentials with easy to use config files
+    * Run an evil / rogue access point (Karma, Karmetasploit, ...)
+    * Do a MitM attack
+    * Sniff credentials (dsniff suite, sslstrip)
+    * Hamster credentials (Wifizoo, Ferret, Hamster)
+    * Test WEP encryption (Wepbuster)
+    * Set up secure connections in hostile environments (SSH tunnel, OpenVPN, DNS Tunnel)
+    * Install and update required software packages for the above tasks 
+
+Written for the security disto Backtrack, heavily tested on BT4 Final and R1 in particular, also running on Ubuntu 9.10, but might work on others systems, too.
+Please check http://code.google.com/p/ubitack/ frequently for updates.
+Feedback is more than welcome.
+
+Installation:
+#wget http://ubitack.googlecode.com/files/ubitack-0.3.tar.gz
+#tar zxvf ubitack-0.3.tar.gz
+#cd ubitack-0.3
+
+Configuration:
+#vi ./ubitack
+Without changes it expects to be installed to /root/ubitack-0.3/
+Follow the instructions within the script. Some parameters might need changes.
+
+Usage:
+#./ubitack
+Follow the GUI. The most powerfull option it the evil access point creation feature.
+
+
+2010-09-21
+toomsec @ gmail.com	

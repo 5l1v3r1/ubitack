@@ -1,0 +1,71 @@
+9
+
+dir
+4007
+http://svn.madwifi-project.org/madwifi/branches/madwifi-hal-0.10.5.6/regression
+http://svn.madwifi-project.org
+
+
+
+2009-04-06T23:29:19.200202Z
+3971
+proski
+has-props
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+0192ed92-7a03-0410-a25b-9323aeb14dbd
+
+ccmp
+dir
+
+tkip
+dir
+
+wep
+dir
+
+Makefile
+file
+
+
+
+
+2009-04-17T02:26:31.000000Z
+1297933f3c9e81743ebd5b2037059376
+2008-06-05T07:41:27.631145Z
+3704
+proski
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+461
+

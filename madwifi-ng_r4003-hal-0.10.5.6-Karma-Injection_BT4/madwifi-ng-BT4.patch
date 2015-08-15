@@ -1,0 +1,11 @@
+--- net80211/ieee80211_wireless.c_orig	2009-12-01 12:53:48.000000000 +0100
++++ net80211/ieee80211_wireless.c	2009-12-01 12:53:48.000000000 +0100
+@@ -2130,7 +2130,7 @@
+ ieee80211_ioctl_karma_addssid(struct net_device *dev, struct iw_request_info *info,
+ 	struct iw_point *wri, char *extra)
+ {
+-	struct ieee80211vap *vap = dev->priv;
++	struct ieee80211vap *vap = netdev_priv(dev);
+ 	struct ieee80211com *ic = vap->iv_ic;
+ 	char s[IEEE80211_NWID_LEN + 1]; // +1 for null terminator
+ 	int length;

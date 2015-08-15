@@ -1,0 +1,46 @@
+##IP=DHCP
+##MASK=DHCP
+##GW=DHCP
+##DNS=DHCP
+##MYCLIENTMAC=66:66:66:66:66:66
+##CHANNEL=NONE
+##CLIENTMAC01=00:22:33:44:55
+
+network={
+	ssid="TARGETWLAN"
+        scan_ssid=1
+	key_mgmt=NONE
+   	bssid=00:de:ad:be:ef:ca:fe
+}
+
+
+# Notes
+# Put your notes down here. e.g. "AP discovered on wireless assessment"
+
+
+
+
+# ###### Info #########
+# This config file is a standard wpa_supplicant config files plus some additional parameters.
+# The following original wpa_supplicant variables are also being used within the ubitack script:
+
+#ssid                   [AP-Name] The access point's name, REQUIRED!
+#key_mgmt               [OPEN / WPA-PSK] Used encryption of the target access point. OPEN for WEP
+#psk / wep_key0-4       Access key of the access point.
+                        #Format for WEP128 e.g. 18393733393735253734303633 for WPA e.g. 12345678abcdef
+#bssid=00:de:ad:be:ef:ca:fe ["" / 00:11:22:33:44:55] MAC of the target access point.
+                        #Not required! If you don't want to specify the BSSID just delete this line or provide empty information: ""
+
+# ### These are the additional Parameters ###
+# Hint: Additional parameters must start with a double "##" . Avoid "##" everywhere else in this config file.
+# Hint: Additional parameters can be placed anywhere in this config file.
+
+#IP=192.168.1.73        [DHCP / NONE / 1.2.3.4] IP used for your wireless client. Should match the access point's network. NONE if you don't need IP connectivity. If you want to be stealthy provide an IP otherwise use DHCP
+#MASK=255.255.255.0     [DHCP / NONE / 1.2.3.4] Network mask of your wireless client. Should match #IP= setting
+#GW=NONE                [DHCP / NONE / 1.2.3.4] IP of the default gateway or DHCP or NONE.
+#DNS=NONE               [DHCP / NONE / 1.2.3.4] IP of DNS server or DHCP or NONE.
+#MYCLIENTMAC=66:66:66:66:66:66  [RANDOM / NONE / 00:11:22:33:44:55] Your wireless client MAC. NONE keeps interface's MAC otherwise your MAC will be spoofed.
+#CHANNEL=NONE              [NONE / 1-14] NONE keeps interface's channel or sets to automatic. Channel setting is required for client attacks, but not for AP connectivity.
+#CLIENTMAC01=00:22:33:44:55 [NONE / 00:11:22:33:44:55] Another wireless client's MAC. In case you are targeting a connected client. Not required!
+#CLIENTMAC02....03 etc.
+

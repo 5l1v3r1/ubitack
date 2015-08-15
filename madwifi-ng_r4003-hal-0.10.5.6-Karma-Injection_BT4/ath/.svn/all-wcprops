@@ -1,0 +1,107 @@
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/!svn/ver/4003/madwifi/branches/madwifi-hal-0.10.5.6/ath
+END
+if_ath_hal_extensions.h
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/!svn/ver/3975/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_hal_extensions.h
+END
+if_ath_radar.c
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/!svn/ver/3904/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_radar.c
+END
+if_ath_ahb.c
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/3904/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_ahb.c
+END
+if_ath_debug.h
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/!svn/ver/3816/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_debug.h
+END
+if_ath_hal_wrappers.h
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_hal_wrappers.h
+END
+if_athvar.h
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/!svn/ver/3986/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_athvar.h
+END
+if_ath_radar.h
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/!svn/ver/3816/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_radar.h
+END
+if_ath_ahb.h
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_ahb.h
+END
+Makefile.kernel
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/!svn/ver/3748/madwifi/branches/madwifi-hal-0.10.5.6/ath/Makefile.kernel
+END
+if_ath_hal.h
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_hal.h
+END
+if_ath_pci.c
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/3904/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_pci.c
+END
+if_ath_hal_macros.h
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_hal_macros.h
+END
+if_ath.c
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/!svn/ver/4003/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath.c
+END
+if_ath_pci.h
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_pci.h
+END
+if_athioctl.h
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/!svn/ver/3816/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_athioctl.h
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/!svn/ver/3704/madwifi/branches/madwifi-hal-0.10.5.6/ath/Makefile
+END
+if_ath_hal_extensions.c
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/!svn/ver/3975/madwifi/branches/madwifi-hal-0.10.5.6/ath/if_ath_hal_extensions.c
+END

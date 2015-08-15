@@ -1,0 +1,74 @@
+9
+
+dir
+4007
+http://svn.madwifi-project.org/madwifi/branches/madwifi-hal-0.10.5.6/ath_rate
+http://svn.madwifi-project.org
+
+
+
+2009-01-14T02:43:13.378953Z
+3904
+proski
+has-props
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+0192ed92-7a03-0410-a25b-9323aeb14dbd
+
+onoe
+dir
+
+amrr
+dir
+
+sample
+dir
+
+minstrel
+dir
+
+Makefile
+file
+
+
+
+
+2009-04-17T02:26:54.000000Z
+dc20c4f87b652bc0ea5adac564693d3d
+2008-06-05T07:41:27.631145Z
+3704
+proski
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+488
+

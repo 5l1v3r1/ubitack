@@ -1,0 +1,36 @@
+# Version History
+
+# 2010-09-21 Released v0.3 
+
+# Added disconnect option for AP connection. Needs improvement though
+# Fixed bug when creating AP mode interface
+# Extended evil AP with evil twin option
+# Implemented MAC blacklist for airbase-ng evil ap
+# ferret/hamster port for proxy can be changed now
+# Fixed bug when creating hostapd evil AP with random channel number
+# wpa_supplicant logging enabled and status shown in main menu
+# Tested with BT 4 R1
+
+# 2010-06-14 Released v0.2
+
+# Evil AP used with airbase-mg now supports MAC blacklist (same as for hostapd)
+# Extended evil AP to evil twin attack (fixed ESSID)
+# Fixed bug when creating AP mode wifi interfaces
+# Fixed bug when creating hostapd evil AP with random channel number
+# Ferret/Hamster proxy port now changeable 
+# wpa_supplicant logging enabled and status shown in main menu 
+
+# 2010-04-03 Initial public release, v0.1
+
+# Added Digininja's Karma patched hostapd support
+# Fixed issues with detecting driver and chipset of wifi interfaces
+# Added hostapd mac deny and accept support for evil AP when using hostapd
+# Fixed cleanup function problem with Ralink interfaces
+# Implemented installation routine for Digininja's Karma patched hostapd drivers
+# Bug fixing 
+
+
+
+
+
+

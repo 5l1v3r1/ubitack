@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/!svn/ver/3971/madwifi/branches/madwifi-hal-0.10.5.6/regression/wep
+END
+test_wep.c
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/!svn/ver/3971/madwifi/branches/madwifi-hal-0.10.5.6/regression/wep/test_wep.c
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/!svn/ver/3704/madwifi/branches/madwifi-hal-0.10.5.6/regression/wep/Makefile
+END

@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/!svn/ver/3936/madwifi/branches/madwifi-hal-0.10.5.6/scripts
+END
+madwifi-indent
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/scripts/madwifi-indent
+END
+madwifi-unload
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/!svn/ver/3748/madwifi/branches/madwifi-hal-0.10.5.6/scripts/madwifi-unload
+END
+get_arch.mk
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/!svn/ver/3936/madwifi/branches/madwifi-hal-0.10.5.6/scripts/get_arch.mk
+END
+hal_unmangle.sed
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/scripts/hal_unmangle.sed
+END
+make-release.bash
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/!svn/ver/3835/madwifi/branches/madwifi-hal-0.10.5.6/scripts/make-release.bash
+END
+hal_unmangle_log
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/scripts/hal_unmangle_log
+END
+update_hal_unmangle
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/scripts/update_hal_unmangle
+END
+find-madwifi-modules.sh
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/scripts/find-madwifi-modules.sh
+END
+hal_unmangle.objcopy
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/scripts/hal_unmangle.objcopy
+END
+if_ath_hal_generator.pl
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/scripts/if_ath_hal_generator.pl
+END

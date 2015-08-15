@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/!svn/ver/3748/madwifi/branches/madwifi-hal-0.10.5.6/patch-kernel
+END
+install.sh
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/!svn/ver/3748/madwifi/branches/madwifi-hal-0.10.5.6/patch-kernel/install.sh
+END
+Kconfig
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/patch-kernel/Kconfig
+END
+Configure.help.patch
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/patch-kernel/Configure.help.patch
+END
+Config.in
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/patch-kernel/Config.in
+END
+README
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/!svn/ver/3697/madwifi/branches/madwifi-hal-0.10.5.6/patch-kernel/README
+END
