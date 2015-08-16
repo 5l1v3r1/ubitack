@@ -1,0 +1,33 @@
+Basic_Usage  
+Usage instructions for ubitack
+
+Introduction
+Ubitack offers several pentest tools and combined attack methods like a sniffing wireless evil access point
+
+Choose wireless interface
+As most of the features require a wireless interface to work with you need to pick one right after the start of ubitack
+
+Main menu
+All the available methods and tools can be chosen from here.
+
+If you are using a Atheros chipset I suggest you set the antenna diversity settings first.
+Then I´d perform a wireless site survey.
+Or you start with an evil access point
+Hint: You can refresh the output of the main menu at any time by pressing <CR>
+
+Example: Evil Access Point
+The script's strength is definitely the creation of an evil access point and its way to take care of all necessary settings.
+
+Prerequisites for this example are: a working internet connection, an injection capable wifi interface, aircrack suite and sslstrip installed
+
+After you picked your wireless interface proceed to the main menu. There look for the following line:
+
+18)  Start  19)  Stop Evil Access Point (192.168.167.1 OFFLINE)
+Simply type 18 and hit enter and answer the following questions.
+
+Which channel do you want to use[1-14]/<CR> for random?: 6
+Which MAC address do you want to use[00:11:22:33:44:55]/RANDOM/<CR> for no change?: RANDOM
+Use [h]ostap or [a]irbase-ng [h/a]: a
+Do you want to act as NAT [R]outer to the internet, use [K]armetasploit or use a web [P]roxy? R
+Start sslstrip, TheMiddler or none [s/t/n]: s
+After the script did its magic check the log output, hit <CR> and check the main menu for more information. To refresh the main menu just hit <CR> again.
