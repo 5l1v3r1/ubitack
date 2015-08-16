@@ -1,0 +1,14 @@
+#Installation
+#git clone https://github.com/wi-fi-analyzer/ubitack.git
+#tar zxvf ubitack-0.3.tar.gz
+#cd ubitack-0.3
+
+Configuration
+#vi ./ubitack
+
+Without changes it expects to be installed to /root/ubitack-0.3/ Follow the instructions within the script. Some parameters might need changes.
+
+Usage
+
+#./ubitack
+Follow the GUI. The most powerfull option it the evil access point creation feature.
