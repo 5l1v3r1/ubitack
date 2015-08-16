@@ -1,0 +1,38 @@
+MadwifiKarmaPatch
+This describes the installation of Karma patched madwifi-ng drivers on Backtrack 4 Pre Final. It might also work on other Linux distributions.
+
+I assume you have an updated version of BT4 Pre Final with the latest kernel installed. The wireless chipset I'm refering to is: AR5008E-3NX and the hardware a Asus EEE PC 901 But it should work for other hardware, too.
+
+Installation - the easy way
+The package your are about to download is the original tar ball from www.darkoperator.com with a minor modification to work on BT4 Pre Final
+
+wget http://ubitack.googlecode.com/files/madwifi-ng_r4003-karma-BT4.tgz
+tar xfvz madwifi-ng_r4003-karma-BT4.tgz
+cd madwifi-ng_r4003-hal-0.10.5.6-Karma-Injection_BT4
+make
+./scripts/madwifi-unload
+make install
+depmod -ae
+modprobe ath_pci
+Installation - the almost easy way
+If you prefer to use the none modified drivers and do the patching yourselves feel free:
+
+wget http://www.darkoperator.com/tools-and-scripts/Madwifi-hal-Karma-Injection-Pached.tgz
+tar xfvz Madwifi-hal-Karma-Injection-Pached.tgz
+cd madwifi-hal-0.10.5.6-backup/
+Now open one of the next file and modify line 2133
+
+vi net80211/ieee80211_wireless.c
+The following line:
+
+struct ieee80211vap *vap = dev->priv;
+should look like this:
+
+struct ieee80211vap *vap = netdev_priv(dev);
+Now proceed with the installation
+
+./scripts/madwifi-unload
+make
+make install
+depmod -ae
+modprobe ath_pci
